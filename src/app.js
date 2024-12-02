@@ -29,6 +29,7 @@ const serviceRoutes = require('./routes/serviceRoutes');
 const adminRoutes = require("./routes/admin")
 const bookingRoutes = require("./routes/bookingRoutes")
 const machinerySalesRoutes = require('./routes/machinerySalesRoutes');
+const sparePartRoutes = require('./routes/sparePartRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 
 // Routes
@@ -37,7 +38,7 @@ app.use('/api/business', BusinessRoutes);
 app.use('/api/service', serviceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/booking', bookingRoutes);
-app.use("/api/spare-parts", require("./routes/sparePart"));
+app.use("/api/spare-parts", sparePartRoutes);
 app.use('/api/machinery', machinerySalesRoutes);
 app.use('/api/order', orderRoutes);
 

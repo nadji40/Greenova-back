@@ -18,6 +18,12 @@ const businessSchema = new mongoose.Schema({
       ref: 'MachinerySale'
     }
   ],
+  spareParts: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SparePart'
+    }
+  ],
   businessName: String,
   businessType: {
     type: String,

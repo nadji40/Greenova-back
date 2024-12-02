@@ -3,7 +3,6 @@ const Service = require('../models/Service');
 const MachinerySale = require('../models/MachinerySaleModel');
 const uploadOnCloudinary = require('../utils/cloudinary');
 
-
 exports.createBusiness = async (req, res) => {
   try {
     const { files, body, user } = req;
@@ -374,8 +373,6 @@ exports.getAllBusiness = async (req, res) => {
   }
 };
 
-
-
 exports.getBusiness = async (req, res) => {
   try {
     const { id } = req.params;
@@ -506,3 +503,58 @@ exports.updateBusiness = async (req, res) => {
   }
 };
 
+exports.nearByBusinesses = async (req, res) => {
+  try {
+    const { latitude, longitude } = req.query;
+    console.log(latitude, longitude);
+
+
+    // Validate latitude and longitude
+    if (!latitude || !longitude) {
+      return res.status(400).json({
+        success: false,
+        message: "Latitude and longitude are required",
+      });
+    }
+
+    const userLocation = {
+      type: "Point",
+      coordinates: [parseFloat(longitude), parseFloat(latitude)],
+    };
+
+    // Find businesses near the user's location and populate related fields
+    const businesses = await Business.find({
+      location: {
+        $near: {
+          $geometry: userLocation,
+          $maxDistance: 5000, // 5000 meters = 5 km
+        },
+      },
+    })
+      .populate('services')
+      .populate('machines')
+      .populate({
+        path: 'reviews.user',
+        model: 'User',
+        select: 'fullName email profilePicture', // Select specific fields from the User model
+      });
+
+    if (!businesses.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No businesses found near this location.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: businesses,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+};

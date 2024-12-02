@@ -165,7 +165,6 @@ exports.editProfile = async (req, res) => {
     // Check if a file was uploaded
     if (req.file && req.file.path) {
       try {
-        console.log('Uploading file from path:', req.file.path); // Debug log
         const profilePicture = await uploadOnCloudinary(req.file.path);
         if (!profilePicture || !profilePicture.url) {
           return res.status(400).json({

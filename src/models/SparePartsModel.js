@@ -1,7 +1,16 @@
 const mongoose = require('mongoose');
 
 const sparePartSchema = new mongoose.Schema({
-  partType: {
+  supplier: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Business',
+    required: true
+  },
+  partCategory: {
+    type: String,
+    required: true
+  },
+  partSubCategory: {
     type: String,
     required: true
   },
@@ -15,7 +24,7 @@ const sparePartSchema = new mongoose.Schema({
   }],
   condition: {
     type: String,
-    enum: ['new', 'used', 'refurbished'],
+    enum: ['New', 'Used', 'Refurbished'],
     required: true
   },
   fixedPrice: {
@@ -26,18 +35,21 @@ const sparePartSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  minPrice: {
+  price: {
     type: Number,
     required: true
-  },
-  maxPrice: {
-    type: Number
   },
   currency: {
     type: String,
     required: true,
     default: 'DZD'
   },
+  spareParts_images: [
+    {
+      type: String,
+      required: true
+    }
+  ],
   locationCountry: {
     type: String,
     required: true
@@ -48,39 +60,31 @@ const sparePartSchema = new mongoose.Schema({
   },
   availability: {
     type: String,
-    enum: ['in_stock', 'out_of_stock', 'available_on_order'],
-    default: 'in_stock'
+    enum: ['In Stock', 'Out of Stock', 'Available on Order'],
+    default: 'In Stock'
   },
-  verifiedSupplier: {
-    type: Boolean,
-    default: false
-  },
-  supplierRating: {
+  ratings: {
     type: Number,
     min: 0,
     max: 5,
     default: 0
   },
-  totalReviews: {
-    type: Number,
-    default: 0
-  },
   warranty: {
-    type: String
+    amount: {
+      type: Number,
+      required: true
+    },
+    unit: {
+      type: String,
+      default: "years",
+      required: true
+    }
   },
-  bulkDiscount: {
-    type: Boolean,
-    default: false
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'approved'
   },
-  minOrderQuantity: {
-    type: Number,
-    default: 1
-  },
-  supplier: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  }
 }, {
   timestamps: true
 });

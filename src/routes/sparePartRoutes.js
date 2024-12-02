@@ -8,13 +8,14 @@ const {
   deleteSparePart
 } = require('../controllers/sparePartController');
 const auth = require('../middleware/auth');
+const upload = require('../middleware/multer.middleware');
 
 // Public routes
 router.get('/', getAllSpareParts);
 router.get('/:id', getSparePart);
 
 // Protected routes
-router.post('/', auth, createSparePart);
+router.post('/', auth, upload.array('spareParts_images', 5), createSparePart);
 router.put('/:id', auth, updateSparePart);
 router.delete('/:id', auth, deleteSparePart);
 

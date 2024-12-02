@@ -1,8 +1,6 @@
-const SparePart = require('../models/SparePart');
+const SparePart = require('../models/SparePartsModel');
+const uploadOnCloudinary = require('../utils/cloudinary');
 
-// @desc    Get all spare parts
-// @route   GET /api/spare-parts
-// @access  Public
 exports.getAllSpareParts = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -51,9 +49,6 @@ exports.getAllSpareParts = async (req, res) => {
   }
 };
 
-// @desc    Get single spare part
-// @route   GET /api/spare-parts/:id
-// @access  Public
 exports.getSparePart = async (req, res) => {
   try {
     const sparePart = await SparePart.findById(req.params.id)
@@ -78,38 +73,50 @@ exports.getSparePart = async (req, res) => {
   }
 };
 
-// @desc    Create new spare part
-// @route   POST /api/spare-parts
-// @access  Private
 exports.createSparePart = async (req, res) => {
   try {
-    const sparePart = await SparePart.create({
-      ...req.body,
-      supplier: req.user.userId
-    });
+    const { files, body } = req;
+    const { supplier } = body;
+    console.log(supplier);
 
-    res.status(201).json({
-      success: true,
-      data: sparePart
-    });
-  } catch (error) {
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map(err => err.message);
-      return res.status(400).json({
+    const supplierFound = await Business.findById(supplier);
+    if (!supplierFound) {
+      return res.status(404).json({
         success: false,
-        error: messages
+        message: "Invalid supplier Id"
       });
     }
-    res.status(500).json({
+    const sparePart = new SparePart({
+      ...body,
+      supplier: supplierFound._id
+    });
+    if (files && files.length > 0) {
+      const imageUrls = await Promise.all(
+        files.map(async (file) => {
+          const uploadResult = await uploadOnCloudinary(file.buffer);
+          return uploadResult.url;
+        })
+      );
+      sparePart.spareParts_images = imageUrls;
+    }
+
+    const savedSpareParts = await SparePart.save();
+
+    supplierFound.spareParts.push(sparePart._id);
+    await businessFound.save();
+    res.status(201).json({
+      success: true,
+      data: savedSpareParts,
+      message: "Spare Parts registered successfully"
+    });
+  } catch (error) {
+    res.status(400).json({
       success: false,
-      error: 'Server Error'
+      message: error.message
     });
   }
 };
 
-// @desc    Update spare part
-// @route   PUT /api/spare-parts/:id
-// @access  Private
 exports.updateSparePart = async (req, res) => {
   try {
     let sparePart = await SparePart.findById(req.params.id);
@@ -162,9 +169,6 @@ exports.updateSparePart = async (req, res) => {
   }
 };
 
-// @desc    Delete spare part
-// @route   DELETE /api/spare-parts/:id
-// @access  Private
 exports.deleteSparePart = async (req, res) => {
   try {
     const sparePart = await SparePart.findById(req.params.id);

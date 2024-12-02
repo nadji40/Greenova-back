@@ -126,7 +126,9 @@ const machinerySaleSchema = new mongoose.Schema({
   ratings: {
     type: Number,
     min: 0,
-    max: 5
+    max: 5,
+    default: 0
+
   },
   spare_parts_available: {
     type: Boolean,
