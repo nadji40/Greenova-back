@@ -16,7 +16,7 @@ router.get('/:id', getSparePart);
 
 // Protected routes
 router.post('/', auth, upload.array('spareParts_images', 5), createSparePart);
-router.put('/:id', auth, updateSparePart);
+router.put('/:id', auth, upload.array('spareParts_images', 5), updateSparePart);
 router.delete('/:id', auth, deleteSparePart);
 
 module.exports = router; 

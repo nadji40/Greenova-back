@@ -10,7 +10,11 @@ const sparePartSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  partSubCategory: {
+  name: {
+    type: String,
+    required: true
+  },
+  machineType: {
     type: String,
     required: true
   },
@@ -79,6 +83,10 @@ const sparePartSchema = new mongoose.Schema({
       default: "years",
       required: true
     }
+  },
+  bulkDiscountsAvailable: {
+    type: Boolean,
+    required: true
   },
   status: {
     type: String,
