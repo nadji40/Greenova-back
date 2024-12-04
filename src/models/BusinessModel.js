@@ -51,7 +51,13 @@ const businessSchema = new mongoose.Schema({
     coordinates: [Number]
   },
   contact_info: {
-    phoneNumber: {
+    phoneNumbers: [
+      {
+        type: String,
+        required: true
+      },
+    ],
+    website: {
       type: String,
       required: true
     },
