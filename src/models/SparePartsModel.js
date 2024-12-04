@@ -14,6 +14,10 @@ const sparePartSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  description: {
+    type: String,
+    required: true
+  },
   machineType: {
     type: String,
     required: true
