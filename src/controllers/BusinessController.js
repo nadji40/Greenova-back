@@ -7,6 +7,12 @@ exports.createBusiness = async (req, res) => {
   try {
     const { files, body, user } = req;
 
+    if (!user.userType == "serviceProvider") {
+      return res.status(400).json({
+        success: false,
+        message: "Only Service providers can register their business"
+      })
+    }
     // Check if logo file is present
     if (!files || !files.logo) {
       return res.status(400).json({
