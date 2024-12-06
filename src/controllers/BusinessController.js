@@ -7,10 +7,10 @@ exports.createBusiness = async (req, res) => {
   try {
     const { files, body, user } = req;
 
-    if (!user.userType == "serviceProvider") {
-      return res.status(400).json({
+    if (user.userType != "serviceProvider") {
+      return res.status(403).json({
         success: false,
-        message: "Only Service providers can register their business"
+        message: "Only Service providers can register their businesses"
       })
     }
     // Check if logo file is present
@@ -381,9 +381,13 @@ exports.getAllBusiness = async (req, res) => {
 
 exports.getBusiness = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const business = await Business.findById(id)
+    if (req.user.userType != "serviceProvider") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only service providers can access this"
+      })
+    }
+    const business = await Business.findOne({ user: req.user.userId })
       .populate('services')
       .populate('machines')
       .populate({
@@ -414,9 +418,14 @@ exports.getBusiness = async (req, res) => {
 
 exports.deleteBusiness = async (req, res) => {
   try {
-    const { businessId } = req.params;
+    if (req.user.userType != "serviceProvider") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only service providers can access this"
+      })
+    }
 
-    const business = await Business.findById(businessId);
+    const business = await Business.findOne({ user: req.user.userId });
     if (!business) {
       return res.status(404).json({
         success: false,
@@ -428,7 +437,7 @@ exports.deleteBusiness = async (req, res) => {
 
     await MachinerySale.deleteMany({ _id: { $in: business.machines } });
 
-    await Business.findByIdAndDelete(businessId);
+    await Business.findByIdAndDelete(business._id);
 
     res.status(200).json({
       success: true,
@@ -444,12 +453,16 @@ exports.deleteBusiness = async (req, res) => {
 
 exports.updateBusiness = async (req, res) => {
   try {
-    const { businessId } = req.params;
+    if (req.user.userType != "serviceProvider") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only service providers can access this"
+      })
+    }
     const { body, files } = req;
 
     // Define which fields are allowed to be updated
     const allowedFields = ['businessName', 'description', 'businessType', 'location', 'contact_info', 'workingHours', 'availability', 'logo', 'banner'];
-
     // Filter the body to only include allowed fields
     const updatedData = {};
     allowedFields.forEach((field) => {
@@ -460,7 +473,7 @@ exports.updateBusiness = async (req, res) => {
 
     // Handle updating specific fields within contact_info
     if (body.contact_info) {
-      const existingBusiness = await Business.findById(businessId);
+      const existingBusiness = await Business.findOne({ user: req.user.userId });
       if (!existingBusiness) {
         return res.status(404).json({
           success: false,
@@ -480,6 +493,24 @@ exports.updateBusiness = async (req, res) => {
       const uploadResult = await uploadOnCloudinary(files.logo[0].buffer);
       updatedData.logo = uploadResult.url;
     }
+    // Validate and format the location field
+    if (body.location && body.location.coordinates) {
+      const [latitude, longitude] = body.location.coordinates;
+
+      // Check if latitude and longitude are valid numbers
+      if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid coordinates. Latitude and longitude must be numbers.'
+        });
+      }
+
+      updatedData.location = {
+        type: 'Point',
+        coordinates: [longitude, latitude] // GeoJSON expects [longitude, latitude]
+      };
+    }
+
 
     if (files && files.banner) {
       const uploadResult = await uploadOnCloudinary(files.banner[0].buffer);
@@ -487,7 +518,7 @@ exports.updateBusiness = async (req, res) => {
     }
 
     // Update the business with the filtered data
-    const business = await Business.findByIdAndUpdate(businessId, updatedData, { new: true });
+    const business = await Business.findOneAndUpdate({ user: req.user.userId }, updatedData, { new: true });
 
     if (!business) {
       return res.status(404).json({
@@ -504,7 +535,7 @@ exports.updateBusiness = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       success: false,
-      error: error.message
+      error: error
     });
   }
 };

@@ -3,6 +3,53 @@ const uploadOnCloudinary = require('../utils/cloudinary');
 const Business = require('../models/BusinessModel')
 const mongoose = require('mongoose');
 
+exports.createSparePart = async (req, res) => {
+  try {
+    const { files, body } = req;
+    if (req.user.userType != "serviceProvider") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only service providers can access this"
+      })
+    }
+    const supplierFound = await Business.findOne({ user: req.user.userId })
+    if (!supplierFound) {
+      return res.status(404).json({
+        success: false,
+        message: "Supplier Not found"
+      });
+    }
+    const sparePart = new SparePart({
+      ...body,
+      supplier: supplierFound._id
+    });
+    if (files && files.length > 0) {
+      const imageUrls = await Promise.all(
+        files.map(async (file) => {
+          const uploadResult = await uploadOnCloudinary(file.buffer);
+          return uploadResult.url;
+        })
+      );
+      sparePart.spareParts_images = imageUrls;
+    }
+
+    const savedSpareParts = await sparePart.save();
+
+    supplierFound.spareParts.push(sparePart._id);
+    await supplierFound.save();
+    res.status(201).json({
+      success: true,
+      data: savedSpareParts,
+      message: "Spare Parts registered successfully"
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 exports.getAllSpareParts = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -216,50 +263,6 @@ exports.getSparePart = async (req, res) => {
   }
 };
 
-exports.createSparePart = async (req, res) => {
-  try {
-    const { files, body } = req;
-    const { supplier } = body;
-    console.log(supplier);
-
-    const supplierFound = await Business.findById(supplier);
-    if (!supplierFound) {
-      return res.status(404).json({
-        success: false,
-        message: "Invalid supplier Id"
-      });
-    }
-    const sparePart = new SparePart({
-      ...body,
-      supplier: supplierFound._id
-    });
-    if (files && files.length > 0) {
-      const imageUrls = await Promise.all(
-        files.map(async (file) => {
-          const uploadResult = await uploadOnCloudinary(file.buffer);
-          return uploadResult.url;
-        })
-      );
-      sparePart.spareParts_images = imageUrls;
-    }
-
-    const savedSpareParts = await sparePart.save();
-
-    supplierFound.spareParts.push(sparePart._id);
-    await supplierFound.save();
-    res.status(201).json({
-      success: true,
-      data: savedSpareParts,
-      message: "Spare Parts registered successfully"
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message
-    });
-  }
-};
-
 exports.updateSparePart = async (req, res) => {
   try {
     const sparePart = await SparePart.findById(req.params.id);
@@ -313,4 +316,44 @@ exports.deleteSparePart = async (req, res) => {
       error: 'Server Error'
     });
   }
-}; 
+};
+
+exports.getSparePartsBySupplier = async (req, res) => {
+  try {
+    if (req.user.userType != "serviceProvider") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only service providers can access this"
+      })
+    }
+
+    const supplier = await Business.findOne({ user: req.user.userId })
+    if (!supplier) {
+      return res.status(404).json({
+        success: false,
+        error: "supplier not found"
+      });
+    }
+
+    console.log('supplier ID:', supplier._id);
+    const spareParts = await SparePart.find({
+      supplier: supplier._id
+    })
+    if (!spareParts) {
+      return res.status(404).json({
+        success: false,
+        message: "No Spare parts Found"
+      })
+    }
+    return res.status(200).json({
+      success: true,
+      data: spareParts
+    })
+
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      error: error.message
+    });
+  }
+}

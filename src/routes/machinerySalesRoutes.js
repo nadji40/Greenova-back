@@ -7,16 +7,19 @@ const {
     getAllMachinery,
     getMachinery,
     updateMachinery,
-    deleteMachinery
+    deleteMachinery,
+    getMachinesByBusiness
 } = require('../controllers/machinerySaleController');
-
-// Public routes
-router.get('/', getAllMachinery);
-router.get('/:id', getMachinery);
 
 // Protected routes
 router.post('/', auth, upload.array('machine_images', 5), createMachinery);
 router.put('/:id', auth, upload.array('machine_images', 5), updateMachinery);
 router.delete('/:id', auth, deleteMachinery);
+router.get('/allMachines', auth, getMachinesByBusiness);
+
+// Public routes
+router.get('/', getAllMachinery);
+router.get('/:id', getMachinery);
+
 
 module.exports = router;

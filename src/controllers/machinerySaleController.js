@@ -6,14 +6,18 @@ const Business = require('../models/BusinessModel');
 const createMachinery = async (req, res) => {
     try {
         const { files, body } = req;
-        const { business } = body;
-        console.log(business);
 
-        const businessFound = await Business.findById(business);
+        if (req.user.userType != "serviceProvider") {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied. Only service providers can access this"
+            })
+        }
+        const businessFound = await Business.findOne({ user: req.user.userId })
         if (!businessFound) {
             return res.status(404).json({
                 success: false,
-                message: "Invalid Business Id"
+                message: "Business Not found"
             });
         }
         const machinery = new MachinerySale({
@@ -335,7 +339,6 @@ const getAllMachinery = async (req, res) => {
     }
 };
 
-
 // Get single machinery
 const getMachinery = async (req, res) => {
     try {
@@ -388,4 +391,44 @@ const deleteMachinery = async (req, res) => {
     }
 };
 
-module.exports = { createMachinery, getAllMachinery, getMachinery, updateMachinery, deleteMachinery };
+const getMachinesByBusiness = async (req, res) => {
+    try {
+        if (req.user.userType != "serviceProvider") {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied. Only service providers can access this"
+            })
+        }
+
+        const business = await Business.findOne({ user: req.user.userId })
+        if (!business) {
+            return res.status(404).json({
+                success: false,
+                error: "Business not found"
+            });
+        }
+
+        console.log('Business ID:', business._id);
+        const machines = await MachinerySale.find({
+            business: business._id
+        })
+        if (!machines) {
+            return res.status(404).json({
+                success: false,
+                message: "No Machines Found"
+            })
+        }
+        return res.status(200).json({
+            success: true,
+            data: machines
+        })
+
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            error: error.message
+        });
+    }
+}
+
+module.exports = { createMachinery, getAllMachinery, getMachinery, updateMachinery, deleteMachinery, getMachinesByBusiness };

@@ -6,11 +6,11 @@ const router = express.Router();
 
 // Protected routes
 router.post('/', auth, upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'banner', maxCount: 1 }]), createBusiness);
-router.put('/:businessId', auth, upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'banner', maxCount: 1 }]), updateBusiness);
-router.delete('/:businessId', deleteBusiness);
+router.put('/', auth, upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'banner', maxCount: 1 }]), updateBusiness);
+router.delete('/', auth, deleteBusiness);
 
 router.get('/nearBy', nearByBusinesses)
 router.get('/', getAllBusiness)
-router.get('/:id', getBusiness)
+router.get('/profile', auth, getBusiness)
 
 module.exports = router;

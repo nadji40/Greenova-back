@@ -6,15 +6,19 @@ const Business = require('../models/BusinessModel');
 
 exports.createService = async (req, res) => {
     try {
-        const { business, ...body } = req.body;
+        const { ...body } = req.body;
         const { files } = req;
-        console.log(business);
-
-        const businessFound = await Business.findById(business);
+        if (req.user.userType != "serviceProvider") {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied. Only service providers can access this"
+            })
+        }
+        const businessFound = await Business.findOne({ user: req.user.userId });
         if (!businessFound) {
             return res.status(404).json({
                 success: false,
-                message: "Invalid Business Id"
+                message: "Business Not found"
             });
         }
 
@@ -373,4 +377,43 @@ exports.getService = async (req, res) => {
     }
 }
 
+exports.getServicesByBusiness = async (req, res) => {
+    try {
+        if (req.user.userType != "serviceProvider") {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied. Only service providers can access this"
+            })
+        }
+
+        const business = await Business.findOne({ user: req.user.userId })
+        if (!business) {
+            return res.status(404).json({
+                success: false,
+                error: "Business not found"
+            });
+        }
+
+        console.log('Business ID:', business._id);
+        const services = await Service.find({
+            business: business._id
+        })
+        if (!services) {
+            return res.status(404).json({
+                success: false,
+                message: "No Services Found"
+            })
+        }
+        return res.status(200).json({
+            success: true,
+            data: services
+        })
+
+    } catch (error) {
+        res.status(400).json({
+            success: false,
+            error: error.message
+        });
+    }
+}
 
