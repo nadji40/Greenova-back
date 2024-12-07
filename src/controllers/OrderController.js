@@ -1,7 +1,7 @@
 const Order = require('../models/OrderModel');
 const MachinerySale = require('../models/MachinerySaleModel'); // Assuming you have these models
-// const SparePart = require('../models/SparePart');
-// const RawMaterial = require('../models/RawMaterial');
+const SparePart = require('../models/SparePartsModel');
+// const RawMaterial = require('../models/');
 
 // Place Order Controller
 const placeOrder = async (req, res) => {
@@ -30,8 +30,9 @@ const placeOrder = async (req, res) => {
             if (itemType === 'MachinerySale') {
                 itemRecord = await MachinerySale.findById(itemId);
             }
-            // else if (itemType === 'sparePart') {
-            //     itemRecord = await SparePart.findById(itemId);
+            else if (itemType === 'sparePart') {
+                itemRecord = await SparePart.findById(itemId);
+            }
             // } else if (itemType === 'rawMaterial') {
             //     itemRecord = await RawMaterial.findById(itemId);
             // }
