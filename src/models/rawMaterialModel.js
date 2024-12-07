@@ -6,11 +6,11 @@ const rawMateriaLSchema = new mongoose.Schema({
         ref: 'Business',
         required: true
     },
-    partCategory: {
+    materialCategory: {
         type: String,
         required: true
     },
-    name: {
+    materialSubCategory: {
         type: String,
         required: true
     },
@@ -18,22 +18,33 @@ const rawMateriaLSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    machineType: {
+    Shapes: {
         type: String,
         required: true
     },
-    compatibleBrands: [{
+    industrialStandards: {
+        type: String,
+        required: true,
+        enum: ["ISO", "ASTM"]
+    },
+    purityLevel: {
+        type: Number,
+        required: true
+    },
+    dimensions: {
         type: String,
         required: true
-    }],
-    compatibleModels: [{
-        type: String,
-        required: true
-    }],
-    condition: {
-        type: String,
-        enum: ['New', 'Used', 'Refurbished'],
-        required: true
+    },
+    quantity: {
+        amount: {
+            type: String,
+            required: true
+        },
+        unit: {
+            type: String,
+            required: true,
+
+        }
     },
     fixedPrice: {
         type: Boolean,
@@ -52,7 +63,7 @@ const rawMateriaLSchema = new mongoose.Schema({
         required: true,
         default: 'DZD'
     },
-    spareParts_images: [
+    material_images: [
         {
             type: String,
             required: true
@@ -76,17 +87,6 @@ const rawMateriaLSchema = new mongoose.Schema({
         min: 0,
         max: 5,
         default: 0
-    },
-    warranty: {
-        amount: {
-            type: Number,
-            required: true
-        },
-        unit: {
-            type: String,
-            default: "years",
-            required: true
-        }
     },
     bulkDiscountsAvailable: {
         type: Boolean,
