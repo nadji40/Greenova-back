@@ -199,6 +199,7 @@ exports.getAllSpareParts = async (req, res) => {
         compatibleBrands: 1,
         compatibleModels: 1,
         machineType: 1,
+        description: 1,
         condition: 1,
         price: 1,
         currency: 1,
