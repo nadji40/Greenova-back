@@ -20,7 +20,6 @@ const rawMateriaLSchema = new mongoose.Schema({
     },
     Shapes: {
         type: String,
-        required: true
     },
     industrialStandards: {
         type: String,
@@ -33,7 +32,6 @@ const rawMateriaLSchema = new mongoose.Schema({
     },
     dimensions: {
         type: String,
-        required: true
     },
     quantity: {
         amount: {
@@ -100,4 +98,4 @@ const rawMateriaLSchema = new mongoose.Schema({
 }, { timestamps: true }
 )
 
-const RawMaterial = mongoose.model('RawMaterial', rawMateriaLSchema)
+module.exports = mongoose.model('RawMaterial', rawMateriaLSchema)
