@@ -2,6 +2,7 @@ const Business = require('../models/BusinessModel');
 const Service = require('../models/Service');
 const MachinerySale = require('../models/MachinerySaleModel');
 const uploadOnCloudinary = require('../utils/cloudinary');
+const DynamicField = require("../models/DynamicFieldsModel")
 
 exports.createBusiness = async (req, res) => {
   try {
@@ -55,6 +56,36 @@ exports.createBusiness = async (req, res) => {
         });
       }
     }
+
+    let dynamicField = await DynamicField.findOne();
+    if (!dynamicField) {
+      // If DynamicField doesn't exist, create it with default certifications
+      dynamicField = await DynamicField.create({
+        certifications: [
+          "ISO Certification",
+          "Safety Certifications",
+          "Quality Assurance Certifications",
+        ]
+      });
+    }
+    const defaultCertifications = ["ISO Certification",
+      "Safety Certifications",
+      "Quality Assurance Certifications",];
+      defaultCertifications.forEach((defaultCertification) => {
+      if (!dynamicField.certifications.includes(defaultCertification)) {
+        dynamicField.certifications.push(defaultCertification);
+      }
+    });
+    // Add new certifications to DynamicField if they do not exist already
+    const newCertifications = business.certifications || [];
+    for (const certification of newCertifications) {
+      if (!dynamicField.certifications.includes(certification)) {
+        dynamicField.certifications.push(certification);
+      }
+    }
+
+    // Save the updated DynamicField document
+    await dynamicField.save();
 
     // Save the business
     await business.save();

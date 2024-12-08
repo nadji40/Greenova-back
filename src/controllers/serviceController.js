@@ -3,28 +3,63 @@ const MachinerySale = require('../models/MachinerySaleModel');
 const Service = require('../models/Service');
 const uploadOnCloudinary = require('../utils/cloudinary');
 const Business = require('../models/BusinessModel');
+const DynamicField = require('../models/DynamicFieldsModel')
 
 exports.createService = async (req, res) => {
     try {
-        const { ...body } = req.body;
-        const { files } = req;
+        const { category, title, description, pricing, pricingType, availability, location } = req.body;
+        const { files } = req; // Get files for image uploads
+
+        // Check if the user is a service provider
         if (req.user.userType != "serviceProvider") {
             return res.status(403).json({
                 success: false,
-                message: "Access denied. Only service providers can access this"
-            })
+                message: "Access denied. Only service providers can access this",
+            });
         }
+
+        // Find the business linked to the user
         const businessFound = await Business.findOne({ user: req.user.userId });
         if (!businessFound) {
             return res.status(404).json({
                 success: false,
-                message: "Business Not found"
+                message: "Business Not found",
             });
         }
 
+        let dynamicField = await DynamicField.findOne();
+        if (!dynamicField) {
+            // If DynamicField doesn't exist, create it and initialize default categories
+            dynamicField = await DynamicField.create({
+                serviceCategories: ["Maintenance", "Consulting", "Automation", "Installation", "Inspection", "Repair", "Training"], // Initialize with default values
+            });
+        }
+
+        // Ensure default categories are present if the document was created with no serviceCategories
+        const defaultCategories = ["Maintenance", "Consulting", "Automation", "Installation", "Inspection", "Repair", "Training"];
+        defaultCategories.forEach((defaultCategory) => {
+            if (!dynamicField.serviceCategories.includes(defaultCategory)) {
+                dynamicField.serviceCategories.push(defaultCategory);
+            }
+        });
+
+        // Check if the category already exists in the serviceCategories array
+        if (!dynamicField.serviceCategories.includes(category)) {
+            // If not, add the new category
+            dynamicField.serviceCategories.push(category);
+            await dynamicField.save(); // Save the updated DynamicField document
+        }
+
+        // Create the new service
         const service = new Service({
-            ...body,
-            business: businessFound._id
+            business: businessFound._id,
+            title,
+            description,
+            category,
+            pricing,
+            pricingType,
+            availability,
+            location,
         });
 
         // Handle multiple image uploads
@@ -38,21 +73,23 @@ exports.createService = async (req, res) => {
             service.images = imageUrls;
         }
 
+        // Save the service
         await service.save();
 
         // Add the service ID to the business's services array
         businessFound.services.push(service._id);
         await businessFound.save();
 
+        // Return a success response
         res.status(201).json({
             success: true,
             data: service,
-            message: "Service Registered Successfully"
+            message: "Service Registered Successfully",
         });
     } catch (error) {
         res.status(400).json({
             success: false,
-            error: error.message
+            error: error.message,
         });
     }
 };
