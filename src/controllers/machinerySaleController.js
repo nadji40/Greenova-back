@@ -66,27 +66,21 @@ const createMachinery = async (req, res) => {
         });
 
         // Add new machinetypes to DynamicField if they do not exist already
-        const newMachineTypes = machinery.machine_type || [];
-        for (const machineType of newMachineTypes) {
-            if (!dynamicField.machine_types.includes(machineType)) {
-                dynamicField.machine_types.push(machineType);
-            }
+        if (!dynamicField.machine_types.includes(machinery.machine_type)) {
+            // If not, add the new category
+            dynamicField.machine_types.push(machinery.machine_type);
         }
 
         // Add new MachineBrands to DynamicField if they do not exist already
-        const newMachineBrands = machinery.brand || [];
-        for (const MachineBrands of newMachineBrands) {
-            if (!dynamicField.machine_brands.includes(MachineBrands)) {
-                dynamicField.machine_brands.push(MachineBrands);
-            }
+        if (!dynamicField.machine_brands.includes(machinery.brand)) {
+            // If not, add the new category
+            dynamicField.machine_brands.push(machinery.brand);
         }
 
         // Add new MachineModels to DynamicField if they do not exist already
-        const newMachineModels = machinery.model || [];
-        for (const MachineModels of newMachineModels) {
-            if (!dynamicField.machine_models.includes(MachineModels)) {
-                dynamicField.machine_models.push(MachineModels);
-            }
+        if (!dynamicField.machine_models.includes(machinery.model)) {
+            // If not, add the new category
+            dynamicField.machine_models.push(machinery.model);
         }
 
         // Save the updated DynamicField document

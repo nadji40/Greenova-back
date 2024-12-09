@@ -2,7 +2,7 @@ const DynamicField = require("../models/DynamicFieldsModel")
 
 exports.getDynamicFields = async (req, res) => {
     try {
-        const dynamicFields = await DynamicField.find()
+        const dynamicFields = await DynamicField.findOne()
         if (!dynamicFields) {
             return res.status(404).json({
                 success: false,
