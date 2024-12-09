@@ -89,7 +89,7 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password , userType } = req.body;
 
     // Validate input
     if (!email || !password) {
@@ -101,10 +101,18 @@ exports.login = async (req, res) => {
 
     // Find user - explicitly include password field
     const user = await User.findOne({ email })
+    
     if (!user) {
       return res.status(404).json({
         success: false,
         error: 'User doesnot exists'
+      });
+    }
+
+    if (user.userType != userType) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid User Type'
       });
     }
 

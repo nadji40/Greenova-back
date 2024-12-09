@@ -114,7 +114,7 @@ const machinerySaleSchema = new mongoose.Schema({
   },
   financingOptions: {
     type: String,
-    enum: ["Financing Available", "Installment Plans", "Rent-to-own"]
+    enum: ["Bank Loans", "Leasing" , "Supplier Credit", "Self-Financing", "Government Subsidies", "Investment Funds", "Islamic Financing", "Export Credit Agencies", "Commercial Credit Lines", "Crowdfunding", "Equipment Financing Programs", "Private Investors", "Joint Ventures", "Trade Agreements with Deferred Payment Options", "Factoring Services"]
   },
   after_sales_service: {
     type: Boolean,

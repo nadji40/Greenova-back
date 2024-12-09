@@ -18,6 +18,27 @@ const dynamicFieldSchema = new mongoose.Schema(
                 ], // Default certifications
             },
         ],
+        machine_types: [
+            {
+                type: String,
+                default: [
+                    "Industrial",
+                ],
+            },
+        ],
+        machine_brands: [
+            {
+                type: String,
+                default: [
+                    "Volvo", "Caterpillar", "John Deere", "Komatsu", "Komatsu"
+                ],
+            },
+        ],
+        machine_models: [
+            {
+                type: String
+            }
+        ]
     },
     { timestamps: true }
 );

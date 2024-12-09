@@ -1,6 +1,7 @@
 const MachinerySale = require('../models/MachinerySaleModel');
 const uploadOnCloudinary = require('../utils/cloudinary');
 const Business = require('../models/BusinessModel');
+const DynamicField = require('../models/DynamicFieldsModel')
 
 // Create machinery
 const createMachinery = async (req, res) => {
@@ -33,6 +34,63 @@ const createMachinery = async (req, res) => {
             );
             machinery.machine_images = imageUrls;
         }
+
+        // add dynamic fields to dynamic models
+        let dynamicField = await DynamicField.findOne();
+        if (!dynamicField) {
+            // If DynamicField doesn't exist, create it with default certifications
+            dynamicField = await DynamicField.create({
+                machine_types: [
+                    "Industrial",
+                ],
+                machine_brands: [
+                    "Volvo", "Caterpillar", "John Deere", "Komatsu", "Komatsu"
+                ],
+                machine_models: []
+            });
+        }
+        // default machinetpes 
+        const defaultMachineTypes = ["Industrial"];
+        defaultMachineTypes.forEach((defaultMachineType) => {
+            if (!dynamicField.machine_types.includes(defaultMachineType)) {
+                dynamicField.machine_types.push(defaultMachineType);
+            }
+        });
+
+        // default machineBrands 
+        const defaultmachineBrands = ["Volvo", "Caterpillar", "John Deere", "Komatsu", "Komatsu"];
+        defaultmachineBrands.forEach((defaultmachineBrand) => {
+            if (!dynamicField.machine_brands.includes(defaultmachineBrand)) {
+                dynamicField.machine_brands.push(defaultmachineBrand);
+            }
+        });
+
+        // Add new machinetypes to DynamicField if they do not exist already
+        const newMachineTypes = machinery.machine_type || [];
+        for (const machineType of newMachineTypes) {
+            if (!dynamicField.machine_types.includes(machineType)) {
+                dynamicField.machine_types.push(machineType);
+            }
+        }
+
+        // Add new MachineBrands to DynamicField if they do not exist already
+        const newMachineBrands = machinery.brand || [];
+        for (const MachineBrands of newMachineBrands) {
+            if (!dynamicField.machine_brands.includes(MachineBrands)) {
+                dynamicField.machine_brands.push(MachineBrands);
+            }
+        }
+
+        // Add new MachineModels to DynamicField if they do not exist already
+        const newMachineModels = machinery.model || [];
+        for (const MachineModels of newMachineModels) {
+            if (!dynamicField.machine_models.includes(MachineModels)) {
+                dynamicField.machine_models.push(MachineModels);
+            }
+        }
+
+        // Save the updated DynamicField document
+        await dynamicField.save();
 
         const savedMachinery = await machinery.save();
 
