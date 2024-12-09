@@ -112,6 +112,7 @@ const getAllMachinery = async (req, res) => {
             machine_type,
             condition,
             brand,
+            model,
             model_year_min,
             model_year_max,
             min_price,
@@ -176,6 +177,9 @@ const getAllMachinery = async (req, res) => {
         // Brand Filter
         if (brand) {
             matchStage.brand = { $regex: new RegExp(brand, 'i') };
+        }
+        if (model) {
+            matchStage.model = { $regex: new RegExp(model, 'i') };
         }
 
         // Model Year Range Filter
