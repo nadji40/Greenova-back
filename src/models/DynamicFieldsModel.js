@@ -1,5 +1,24 @@
 const mongoose = require("mongoose");
 
+const sparePartCategorySchema = new mongoose.Schema({
+    category: {
+        type: String,
+        required: true,
+    },
+    subCategories: {
+        type: [String],
+        default: [],
+    },
+    compatibleBrands: {
+        type: [String],
+        default: []
+    },
+    compatibleModels: {
+        type: [String],
+        default: []
+    }
+});
+
 const dynamicFieldSchema = new mongoose.Schema(
     {
         serviceCategories: [
@@ -38,7 +57,40 @@ const dynamicFieldSchema = new mongoose.Schema(
             {
                 type: String
             }
-        ]
+        ],
+        sparePartCategories: {
+            type: [sparePartCategorySchema],
+            default: [
+                {
+                    category: "Engine",
+                    subCategories: ["Pistons", "Crankshafts", "Valves", "Camshafts"],
+                    compatibleBrands: ["Caterpillar"],
+                    compatibleModels: ["Caterpillar 320"],
+                },
+                {
+                    category: "Bearings",
+                    subCategories: ["Ball Bearings", "Roller Bearings", "Thrust Bearings"],
+                    compatibleBrands: ["Hyundai"],
+                    compatibleModels: ["Hyundai HL770"],
+                },
+                {
+                    category: "Belts",
+                    subCategories: ["Timing Belts", "Serpentine Belts", "V-Belts"],
+                    compatibleBrands: ["Massey Ferguson"],
+                    compatibleModels: ["Massey Ferguson 260"],
+                },
+                {
+                    category: "Filters",
+                    subCategories: ["Oil Filters", "Air Filters", "Fuel Filters"],
+                    compatibleBrands: ["John Deere"],
+                    compatibleModels: ["John Deere 5055E"],
+                },
+                {
+                    category: "Electronics Components",
+                    subCategories: ["Sensors", "Control Modules", "Alternators", "Starters"],
+                },
+            ],
+        },
     },
     { timestamps: true }
 );

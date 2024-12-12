@@ -10,6 +10,10 @@ const sparePartSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  subCategory: {
+    type: String,
+    required: true
+  },
   name: {
     type: String,
     required: true

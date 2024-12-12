@@ -1,28 +1,32 @@
 const SparePart = require('../models/SparePartsModel');
 const uploadOnCloudinary = require('../utils/cloudinary');
 const Business = require('../models/BusinessModel')
+const DynamicField = require("../models/DynamicFieldsModel")
 const mongoose = require('mongoose');
 
 exports.createSparePart = async (req, res) => {
   try {
     const { files, body } = req;
-    if (req.user.userType != "serviceProvider") {
+    if (req.user.userType !== "serviceProvider") {
       return res.status(403).json({
         success: false,
-        message: "Access denied. Only service providers can access this"
-      })
+        message: "Access denied. Only service providers can access this."
+      });
     }
-    const supplierFound = await Business.findOne({ user: req.user.userId })
+
+    const supplierFound = await Business.findOne({ user: req.user.userId });
     if (!supplierFound) {
       return res.status(404).json({
         success: false,
-        message: "Supplier Not found"
+        message: "Supplier not found."
       });
     }
+
     const sparePart = new SparePart({
       ...body,
       supplier: supplierFound._id
     });
+
     if (files && files.length > 0) {
       const imageUrls = await Promise.all(
         files.map(async (file) => {
@@ -33,14 +37,109 @@ exports.createSparePart = async (req, res) => {
       sparePart.spareParts_images = imageUrls;
     }
 
+    // Handle dynamic fields for spare parts
+    let dynamicField = await DynamicField.findOne();
+    if (!dynamicField) {
+      dynamicField = await DynamicField.create({
+        sparePartCategories: []
+      });
+    }
+
+    // Default categories and subcategories
+    const defaultCategories = [
+      {
+        category: "Engine",
+        subCategories: ["Pistons", "Crankshafts", "Valves", "Camshafts"],
+        compatibleBrands: ["Caterpillar"],
+        compatibleModels: ["Caterpillar 320"],
+      },
+      {
+        category: "Bearings",
+        subCategories: ["Ball Bearings", "Roller Bearings", "Thrust Bearings"],
+        compatibleBrands: ["Hyundai"],
+        compatibleModels: ["Hyundai HL770"],
+      },
+      {
+        category: "Belts",
+        subCategories: ["Timing Belts", "Serpentine Belts", "V-Belts"],
+        compatibleBrands: ["Massey Ferguson"],
+        compatibleModels: ["Massey Ferguson 260"],
+      },
+      {
+        category: "Filters",
+        subCategories: ["Oil Filters", "Air Filters", "Fuel Filters"],
+        compatibleBrands: ["John Deere"],
+        compatibleModels: ["John Deere 5055E"],
+      },
+      {
+        category: "Electronics Components",
+        subCategories: ["Sensors", "Control Modules", "Alternators", "Starters"],
+        compatibleBrands: [],
+        compatibleModels: []
+      }
+    ];
+
+    defaultCategories.forEach((defaultCategory) => {
+      let existingCategory = dynamicField.sparePartCategories.find(
+        (item) => item.category === defaultCategory.category
+      );
+
+      if (!existingCategory) {
+        dynamicField.sparePartCategories.push(defaultCategory);
+      } else {
+        defaultCategory.subCategories.forEach((subCategory) => {
+          if (!existingCategory.subCategories.includes(subCategory)) {
+            existingCategory.subCategories.push(subCategory);
+          }
+        });
+      }
+    });
+
+    // Check if the category exists
+    let categoryEntry = dynamicField.sparePartCategories.find(
+      (item) => item.category === sparePart.partCategory
+    );
+
+    if (!categoryEntry) {
+      dynamicField.sparePartCategories.push({
+        category: sparePart.partCategory,
+        subCategories: [sparePart.subCategory],
+        compatibleBrands: [...(sparePart.compatibleBrands || [])],
+        compatibleModels: [...(sparePart.compatibleModels || [])]
+      });
+    } else {
+      // Add subcategory if it does not exist
+      if (!categoryEntry.subCategories.includes(sparePart.subCategory)) {
+        categoryEntry.subCategories.push(sparePart.subCategory);
+      }
+
+      // Add compatible brands if they do not exist
+      (sparePart.compatibleBrands || []).forEach((brand) => {
+        if (!categoryEntry.compatibleBrands.includes(brand)) {
+          categoryEntry.compatibleBrands.push(brand);
+        }
+      });
+
+      // Add compatible models if they do not exist
+      (sparePart.compatibleModels || []).forEach((model) => {
+        if (!categoryEntry.compatibleModels.includes(model)) {
+          categoryEntry.compatibleModels.push(model);
+        }
+      });
+    }
+
+    // Save the updated dynamic fields
+    await dynamicField.save();
+
     const savedSpareParts = await sparePart.save();
 
     supplierFound.spareParts.push(sparePart._id);
     await supplierFound.save();
+
     res.status(201).json({
       success: true,
       data: savedSpareParts,
-      message: "Spare Parts registered successfully"
+      message: "Spare part registered successfully."
     });
   } catch (error) {
     res.status(400).json({

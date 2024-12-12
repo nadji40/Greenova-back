@@ -33,7 +33,7 @@ const businessSchema = new mongoose.Schema({
   businessName: String,
   businessType: {
     type: String,
-    enum: ["SARL", "EURL", "SPA", "SNC", "SCS", "GIE", "Independent Contractors", "Auto - Entrepreneurs", "Freelancers", "Cooperatives", "EPIC", "Public Establishments"]
+    enum: ["SARL", "EURL", "SPA", "SNC", "SCS", "GIE", "Independent Contractor", "Auto - Entrepreneurs", "Freelancers", "Cooperatives", "EPIC", "Public Establishments"]
   },
   years_of_experience: {
     type: Number,
