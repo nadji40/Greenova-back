@@ -165,8 +165,8 @@ exports.getAllSpareParts = async (req, res) => {
     if (req.query.partType) {
       matchFilters.partCategory = req.query.partType;
     }
-    if (req.query.partName) {
-      matchFilters.name = req.query.partName;
+    if (req.query.subCategory) {
+      matchFilters.subCategory = req.query.subCategory;
     }
 
     // Condition filter
@@ -294,7 +294,7 @@ exports.getAllSpareParts = async (req, res) => {
       $project: {
         supplier: { $arrayElemAt: ['$supplierDetails', 0] }, // Get only the first element of the array (since $lookup returns an array)
         partCategory: 1,
-        name: 1,
+        subCategory: 1,
         compatibleBrands: 1,
         compatibleModels: 1,
         machineType: 1,
