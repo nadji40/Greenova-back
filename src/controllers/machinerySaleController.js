@@ -436,6 +436,12 @@ const updateMachinery = async (req, res) => {
 // Delete machinery
 const deleteMachinery = async (req, res) => {
     try {
+        if (req.user.userType !== "serviceProvider") {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied. Only service providers can access this."
+            });
+        }
         const machinery = await MachinerySale.findById(req.params.id);
         if (!machinery) {
             return res.status(404).json({ success: false, message: 'Machinery not found' });

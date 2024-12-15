@@ -20,7 +20,6 @@ const sparePartSchema = new mongoose.Schema({
   },
   machineType: {
     type: String,
-    required: true
   },
   compatibleBrands: [{
     type: String,

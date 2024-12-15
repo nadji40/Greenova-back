@@ -53,8 +53,14 @@ const rawMateriaLSchema = new mongoose.Schema({
         default: false
     },
     price: {
-        type: Number,
-        required: true
+        amount: {
+            type: Number,
+            required: true
+        },
+        unit: {
+            type: String,
+            required: true
+        }
     },
     currency: {
         type: String,
@@ -77,7 +83,7 @@ const rawMateriaLSchema = new mongoose.Schema({
     },
     availability: {
         type: String,
-        enum: ['In Stock', 'Out of Stock', 'Available on Order'],
+        enum: ['In Stock', 'Available on Order'],
         default: 'In Stock'
     },
     ratings: {

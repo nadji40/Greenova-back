@@ -96,6 +96,12 @@ exports.createService = async (req, res) => {
 
 exports.deleteService = async (req, res) => {
     try {
+        if (req.user.userType !== "serviceProvider") {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied. Only service providers can access this."
+            });
+        }
         const { id } = req.params;
         const service = await Service.findByIdAndDelete(id);
 

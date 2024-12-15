@@ -161,42 +161,54 @@ exports.getAllSpareParts = async (req, res) => {
     // Match filters
     const matchFilters = {};
 
-    // PartType filter
+    // PartType filter (multiple categories)
     if (req.query.partType) {
-      matchFilters.partCategory = req.query.partType;
-    }
-    if (req.query.subCategory) {
-      matchFilters.subCategory = req.query.subCategory;
+      const categories = req.query.partType.split(',').map(cat => cat.trim());
+      matchFilters.partCategory = { $in: categories };
     }
 
-    // Condition filter
-    if (req.query.condition) {
-      matchFilters.condition = req.query.condition;
+    // SubCategory filter (multiple subcategories)
+    if (req.query.subCategory) {
+      const subCategories = req.query.subCategory.split(',').map(cat => cat.trim());
+      matchFilters.subCategory = { $in: subCategories };
     }
+
+    // Condition filter (multiple conditions)
+    if (req.query.condition) {
+      const conditions = req.query.condition.split(',').map(cond => cond.trim());
+      matchFilters.condition = { $in: conditions };  // Match any of the selected conditions
+    }
+
+    // MachineType filter
     if (req.query.machineType) {
       matchFilters.machineType = req.query.machineType;
     }
 
-    // Location filters (Country and City)
+    // Location filters (Country and City) - Multiple cities allowed
     if (req.query.locationCountry) {
       matchFilters.locationCountry = req.query.locationCountry;
     }
     if (req.query.locationCity) {
-      matchFilters.locationCity = req.query.locationCity;
+      const cities = req.query.locationCity.split(',').map(city => city.trim());
+      matchFilters.locationCity = { $in: cities };  // Match any of the selected cities
     }
 
-    // Availability filter
+    // Availability filter (multiple availability options)
     if (req.query.availability) {
-      matchFilters.availability = req.query.availability;
+      const availabilityOptions = req.query.availability.split(',').map(avail => avail.trim());
+      matchFilters.availability = { $in: availabilityOptions };  // Match any of the selected availability options
     }
 
-    // Compatible Brands filter (assumes the compatibleBrands field is an array)
+    // Compatible Brands filter (multiple brands)
     if (req.query.compatibleBrands) {
-      matchFilters.compatibleBrands = { $in: req.query.compatibleBrands.split(',') }; // Assumes brands are passed as comma-separated string
+      const brands = req.query.compatibleBrands.split(',').map(brand => brand.trim());
+      matchFilters.compatibleBrands = { $in: brands };  // Match any of the selected compatible brands
     }
 
+    // Compatible Models filter (multiple models)
     if (req.query.compatibleModels) {
-      matchFilters.compatibleModels = { $in: req.query.compatibleModels.split(',') }; // Assumes models are passed as comma-separated string
+      const models = req.query.compatibleModels.split(',').map(model => model.trim());
+      matchFilters.compatibleModels = { $in: models };  // Match any of the selected compatible models
     }
 
     // Price Range filter
@@ -220,7 +232,7 @@ exports.getAllSpareParts = async (req, res) => {
       }
     }
 
-
+    // Warranty filter (range)
     if (req.query.warrantyMin || req.query.warrantyMax) {
       // Ensure that matchFilters.warranty exists
       matchFilters.warranty = matchFilters.warranty || {};
@@ -243,19 +255,10 @@ exports.getAllSpareParts = async (req, res) => {
       }
     }
 
-    // bulk discount filter
+    // Bulk discount filter
     if (req.query.bulkDiscountsAvailable !== undefined) {
       const bulkDiscount = req.query.bulkDiscountsAvailable === 'true'; // Convert string to boolean
       matchFilters.bulkDiscountsAvailable = bulkDiscount; // Add filter for bulk discount availability
-    }
-
-
-    // Supplier Minimum Rating filter (added)
-    if (req.query.supplierMinRating) {
-      const minRating = parseFloat(req.query.supplierMinRating);
-      if (!isNaN(minRating) && minRating >= 0 && minRating <= 5) {
-        matchFilters.ratings = { $gte: minRating }; // Add supplier rating filter
-      }
     }
 
     // Add match stage to aggregation pipeline if any filters are provided
@@ -339,6 +342,7 @@ exports.getAllSpareParts = async (req, res) => {
   }
 };
 
+
 exports.getSparePart = async (req, res) => {
   try {
     const sparePart = await SparePart.findById(req.params.id)
@@ -389,6 +393,12 @@ exports.updateSparePart = async (req, res) => {
 
 exports.deleteSparePart = async (req, res) => {
   try {
+    if (req.user.userType !== "serviceProvider") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only service providers can access this."
+      });
+    }
     const sparePart = await SparePart.findById(req.params.id);
 
     if (!sparePart) {
