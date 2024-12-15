@@ -19,17 +19,6 @@ const sparePartCategorySchema = new mongoose.Schema({
     }
 });
 
-const rawMaterialCategorySchema = new mongoose.Schema({
-    category: {
-        type: String,
-        required: true,
-    },
-    subCategories: {
-        type: [String],
-        default: [],
-    },
-});
-
 const dynamicFieldSchema = new mongoose.Schema(
     {
         serviceCategories: [
@@ -102,27 +91,18 @@ const dynamicFieldSchema = new mongoose.Schema(
                 },
             ],
         },
-        rawMaterialCategories: {
-            type: [rawMaterialCategorySchema],
-            default: [
-                {
-                    category: "Metal",
-                    subCategories: ["Steel", "Aluminum", "Copper", "Brass", "Titanium"],
-                },
-                {
-                    category: "Plastic",
-                    subCategories: ["Polyethylene", "Polycarbonate", "PVC", "Acrylic", "Nylon"],
-                },
-                {
-                    category: "Wood",
-                    subCategories: ["Pine", "Oak", "Maple", "Birch", "Walnut"],
-                },
-                {
-                    category: "Chemicals",
-                    subCategories: ["Acids", "Bases", "Solvents", "Polymers", "Catalysts"],
-                },
-            ],
-        },
+        rawMaterialCategory: [
+            {
+                type: String,
+                default: ["Metal", "Plastic", "Wood", "Chemicals"], // Predefined categories
+            },
+        ],
+        rawMaterialIndustrialStandards: [
+            {
+                type: String,
+                default: ["ISO 9001", "ASTM"], // Predefined categories
+            },
+        ],
     },
     { timestamps: true }
 );

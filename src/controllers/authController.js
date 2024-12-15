@@ -82,14 +82,14 @@ exports.register = async (req, res) => {
     console.error("Registration Error:", error);
     res.status(500).json({
       success: false,
-      error: "Server Error, please try again later"
+      error: error
     });
   }
 }
 
 exports.login = async (req, res) => {
   try {
-    const { email, password , userType } = req.body;
+    const { email, password, userType } = req.body;
 
     // Validate input
     if (!email || !password) {
@@ -101,7 +101,7 @@ exports.login = async (req, res) => {
 
     // Find user - explicitly include password field
     const user = await User.findOne({ email })
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,

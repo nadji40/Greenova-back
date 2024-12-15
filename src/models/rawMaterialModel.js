@@ -10,7 +10,7 @@ const rawMateriaLSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    materialSubCategory: {
+    name: {
         type: String,
         required: true
     },
@@ -18,24 +18,30 @@ const rawMateriaLSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    Shapes: {
+    Form: {
         type: String,
+    },
+    volume: {
+        amount: {
+            type: Number,
+            required: true
+        },
+        unit: {
+            type: String,
+            required: true,
+        }
     },
     industrialStandards: {
         type: String,
         required: true,
-        enum: ["ISO", "ASTM"]
     },
     purityLevel: {
         type: Number,
         required: true
     },
-    dimensions: {
-        type: String,
-    },
     quantity: {
         amount: {
-            type: String,
+            type: Number,
             required: true
         },
         unit: {
@@ -84,7 +90,6 @@ const rawMateriaLSchema = new mongoose.Schema({
     availability: {
         type: String,
         enum: ['In Stock', 'Available on Order'],
-        default: 'In Stock'
     },
     ratings: {
         type: Number,
@@ -94,6 +99,10 @@ const rawMateriaLSchema = new mongoose.Schema({
     },
     bulkDiscountsAvailable: {
         type: Boolean,
+        required: true
+    },
+    bulkDiscounts: {
+        type: String,
         required: true
     },
     status: {

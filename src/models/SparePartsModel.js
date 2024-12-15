@@ -90,7 +90,6 @@ const sparePartSchema = new mongoose.Schema({
   },
   bulkDiscounts: {
     type: String,
-    required: true
   },
   status: {
     type: String,

@@ -26,10 +26,7 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'serviceProvider', 'admin'],
     default: 'user'
   },
-  profileCompleted: {
-    type: Boolean,
-    default: false
-  }
+
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

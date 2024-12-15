@@ -37,65 +37,45 @@ exports.createRawMaterial = async (req, res) => {
             rawMaterial.material_images = imageUrls;
         }
 
-        // Handle dynamic fields for spare parts
+        // add dynamic fields to dynamic models
         let dynamicField = await DynamicField.findOne();
         if (!dynamicField) {
+            // If DynamicField doesn't exist, create it with default certifications
             dynamicField = await DynamicField.create({
-                rawMaterialCategories: []
+                rawMaterialCategory: [
+                    "Metal", "Plastic", "Wood", "Chemicals",
+                ],
+                rawMaterialIndustrialStandards: [
+                    "ISO 9001", "ASTM"
+                ],
             });
         }
-
-        // Default categories and subcategories
-        const defaultCategories = [
-            {
-                category: "Metal",
-                subCategories: ["Steel", "Aluminum", "Copper", "Brass", "Titanium"],
-            },
-            {
-                category: "Plastic",
-                subCategories: ["Polyethylene", "Polycarbonate", "PVC", "Acrylic", "Nylon"],
-            },
-            {
-                category: "Wood",
-                subCategories: ["Pine", "Oak", "Maple", "Birch", "Walnut"],
-            },
-            {
-                category: "Chemicals",
-                subCategories: ["Acids", "Bases", "Solvents", "Polymers", "Catalysts"],
-            },
-        ];
-
-        defaultCategories.forEach((defaultCategory) => {
-            let existingCategory = dynamicField.rawMaterialCategories.find(
-                (item) => item.category === defaultCategory.category
-            );
-
-            if (!existingCategory) {
-                dynamicField.rawMaterialCategories.push(defaultCategory);
-            } else {
-                defaultCategory.subCategories.forEach((subCategory) => {
-                    if (!existingCategory.subCategories.includes(subCategory)) {
-                        existingCategory.subCategories.push(subCategory);
-                    }
-                });
+        // default machinetpes 
+        const defaultrawMaterialCategories = ["Metal", "Plastic", "Wood", "Chemicals"];
+        defaultrawMaterialCategories.forEach((defaultrawMaterialCategory) => {
+            if (!dynamicField.rawMaterialCategory.includes(defaultrawMaterialCategory)) {
+                dynamicField.rawMaterialCategory.push(defaultrawMaterialCategory);
             }
         });
 
-        // Check if the category exists
-        let categoryEntry = dynamicField.rawMaterialCategories.find(
-            (item) => item.category === rawMaterial.materialCategory
-        );
-
-        if (!categoryEntry) {
-            dynamicField.rawMaterialCategories.push({
-                category: rawMaterial.materialCategory,
-                subCategories: [rawMaterial.materialSubCategory],
-            });
-        } else {
-            // Add subcategory if it does not exist
-            if (!categoryEntry.subCategories.includes(rawMaterial.materialSubCategory)) {
-                categoryEntry.subCategories.push(rawMaterial.materialSubCategory);
+        // default machineBrands 
+        const defaultrawMaterialIndustrialStandards = ["ISO 9001", "ASTM"];
+        defaultrawMaterialIndustrialStandards.forEach((defaultrawMaterialIndustrialStandard) => {
+            if (!dynamicField.rawMaterialIndustrialStandards.includes(defaultrawMaterialIndustrialStandard)) {
+                dynamicField.rawMaterialIndustrialStandards.push(defaultrawMaterialIndustrialStandard);
             }
+        });
+
+        // Add new machinetypes to DynamicField if they do not exist already
+        if (!dynamicField.rawMaterialCategory.includes(rawMaterial.materialCategory)) {
+            // If not, add the new category
+            dynamicField.rawMaterialCategory.push(rawMaterial.materialCategory);
+        }
+
+        // Add new MachineBrands to DynamicField if they do not exist already
+        if (!dynamicField.rawMaterialIndustrialStandards.includes(rawMaterial.industrialStandards)) {
+            // If not, add the new category
+            dynamicField.rawMaterialIndustrialStandards.push(rawMaterial.industrialStandards);
         }
 
         // Save the updated dynamic fields
@@ -134,7 +114,7 @@ exports.getAllRawMaterials = async (req, res) => {
         // PartType filter (multiple categories)
         if (req.query.category) {
             const categories = req.query.category.split(',').map(cat => cat.trim());
-            matchFilters.materialCategory = { $in: categories }; 
+            matchFilters.materialCategory = { $in: categories };
         }
         if (req.query.subCategory) {
             const subCategories = req.query.subCategory.split(',').map(subCat => subCat.trim());
