@@ -18,9 +18,6 @@ const sparePartSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  machineType: {
-    type: String,
-  },
   compatibleBrands: [{
     type: String,
     required: true
@@ -89,6 +86,10 @@ const sparePartSchema = new mongoose.Schema({
   },
   bulkDiscountsAvailable: {
     type: Boolean,
+    required: true
+  },
+  bulkDiscounts: {
+    type: String,
     required: true
   },
   status: {

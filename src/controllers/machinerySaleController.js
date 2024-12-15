@@ -105,7 +105,7 @@ const createMachinery = async (req, res) => {
 // Get all machinery with filters
 const getAllMachinery = async (req, res) => {
     try {
-        console.log("Received query:", req.query); // Log the query for debugging
+        // console.log("Received query:", req.query); // Log the query for debugging
 
         const {
             machine_name,

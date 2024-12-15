@@ -154,6 +154,7 @@ exports.getAllSpareParts = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
+    console.log("Received Query", req.query);
 
     // Initialize the aggregation pipeline
     const pipeline = [];
@@ -181,7 +182,8 @@ exports.getAllSpareParts = async (req, res) => {
 
     // MachineType filter
     if (req.query.machineType) {
-      matchFilters.machineType = req.query.machineType;
+      const machineTypes = req.query.machineType.split(',').map(mt => mt.trim());
+      matchFilters.machineType = { $in: machineTypes };
     }
 
     // Location filters (Country and City) - Multiple cities allowed
@@ -220,38 +222,40 @@ exports.getAllSpareParts = async (req, res) => {
 
     // Price Type filter (Fixed or Negotiable)
     if (req.query.priceType) {
-      if (req.query.priceType === 'fixed') {
+      const priceType = req.query.priceType.toLowerCase();
+      if (priceType === 'fixed price') {
         matchFilters.fixedPrice = true;
         matchFilters.negotiablePrice = false;
-      } else if (req.query.priceType === 'negotiable') {
+      } else if (priceType === 'negotiable price') {
         matchFilters.fixedPrice = false;
         matchFilters.negotiablePrice = true;
       } else {
-        // If the priceType is neither 'fixed' nor 'negotiable', return an empty result
+        // If the priceType is neither 'fixed price' nor 'negotiable price', return an empty result
         matchFilters.price = { $lt: 0 }; // This ensures no results will match the invalid priceType
       }
     }
 
     // Warranty filter (range)
     if (req.query.warrantyMin || req.query.warrantyMax) {
-      // Ensure that matchFilters.warranty exists
-      matchFilters.warranty = matchFilters.warranty || {};
-
-      // Ensure that matchFilters.warranty.amount exists
-      matchFilters.warranty.amount = matchFilters.warranty.amount || {};
+      const warrantyFilter = {};
 
       if (req.query.warrantyMin) {
         const warrantyMin = parseInt(req.query.warrantyMin);
         if (!isNaN(warrantyMin)) {
-          matchFilters.warranty.amount.$gte = warrantyMin;
+          warrantyFilter.$gte = warrantyMin;
         }
       }
 
       if (req.query.warrantyMax) {
         const warrantyMax = parseInt(req.query.warrantyMax);
         if (!isNaN(warrantyMax)) {
-          matchFilters.warranty.amount.$lte = warrantyMax;
+          warrantyFilter.$lte = warrantyMax;
         }
+      }
+
+      // Only add the warranty.amount filter if at least one condition is met
+      if (Object.keys(warrantyFilter).length > 0) {
+        matchFilters['warranty.amount'] = warrantyFilter;
       }
     }
 
@@ -265,10 +269,6 @@ exports.getAllSpareParts = async (req, res) => {
     if (Object.keys(matchFilters).length > 0) {
       pipeline.push({ $match: matchFilters });
     }
-
-    // Pagination
-    pipeline.push({ $skip: skip });
-    pipeline.push({ $limit: limit });
 
     // Sorting by createdAt (desc)
     pipeline.push({ $sort: { createdAt: -1 } });
@@ -290,6 +290,19 @@ exports.getAllSpareParts = async (req, res) => {
           'supplierDetails.ratings': { $gte: parseFloat(req.query.supplierMinRating) }
         }
       });
+    }
+    // **New: Add minReviews filter**
+    if (req.query.minReviews) {
+      const minReviews = parseInt(req.query.minReviews);
+      if (!isNaN(minReviews)) {
+        pipeline.push({
+          $match: {
+            $expr: {
+              $gte: [{ $size: '$supplierDetails.reviews' }, minReviews]
+            }
+          }
+        });
+      }
     }
 
     // Project to clean up the output (optional)
@@ -317,6 +330,10 @@ exports.getAllSpareParts = async (req, res) => {
       }
     });
 
+    // Pagination
+    pipeline.push({ $skip: skip });
+    pipeline.push({ $limit: limit });
+
     // Execute the aggregation
     const spareParts = await SparePart.aggregate(pipeline);
 
@@ -341,6 +358,7 @@ exports.getAllSpareParts = async (req, res) => {
     });
   }
 };
+
 
 
 exports.getSparePart = async (req, res) => {
