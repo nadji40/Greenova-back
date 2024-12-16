@@ -107,12 +107,12 @@ exports.getAllBusiness = async (req, res) => {
   try {
     console.log("Received Query:", req.query);
 
-    // Destructure the filter object from the query parameters
+    // Destructure and parse query parameters
     let {
-      priceRange, // Expected as an object: { min: '100', max: '500' }
+      priceRange, // Expected as object: { min: '100', max: '500' }
       selectedCategories,
       selectedRating,
-      radius, // Expected as an object: { min: '5', max: '50' }
+      radius, // Expected as object: { min: '5', max: '50' }
       expertiseLevel,
       availabilityOption,
       minReviews,
@@ -145,7 +145,7 @@ exports.getAllBusiness = async (req, res) => {
     selectedProviders = parseToArray(selectedProviders);
     selectedCertifications = parseToArray(selectedCertifications);
 
-    // Parse priceRange from object
+    // Parse priceRange
     let parsedPriceRange = {};
     if (priceRange) {
       const { min, max } = priceRange;
@@ -153,7 +153,7 @@ exports.getAllBusiness = async (req, res) => {
       if (max !== undefined && !isNaN(parseFloat(max))) parsedPriceRange.max = parseFloat(max);
     }
 
-    // Parse radius from object
+    // Parse radius
     let parsedRadius = {};
     if (radius) {
       const { min, max } = radius;
@@ -161,10 +161,51 @@ exports.getAllBusiness = async (req, res) => {
       if (max !== undefined && !isNaN(parseFloat(max))) parsedRadius.max = parseFloat(max);
     }
 
+    // Determine if we have filters that would restrict the result set
+    const hasFilters =
+      longitude && latitude && parsedRadius.max ||
+      (businessName && businessName.trim() !== "") ||
+      (selectedCertifications && selectedCertifications.length > 0) ||
+      experienceRange ||
+      (selectedProviders && selectedProviders.length > 0) ||
+      selectedRating ||
+      expertiseLevel ||
+      availabilityOption ||
+      serviceName ||
+      (selectedCategories && selectedCategories.length > 0) ||
+      pricingType ||
+      parsedPriceRange.min !== undefined ||
+      parsedPriceRange.max !== undefined ||
+      minReviews;
+
+    // If no filters, return all businesses directly
+    if (!hasFilters) {
+      const pageNumber = parseInt(page, 10) || 1;
+      const limitNumber = parseInt(limit, 10) || 20;
+      const skip = (pageNumber - 1) * limitNumber;
+
+      // Optionally, you could apply sorting as well. For now, just sort by creation date descending.
+      const businesses = await Business.find({})
+        .populate('services')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNumber)
+        .exec();
+
+      const totalCount = await Business.countDocuments({});
+      return res.status(200).json({
+        success: true,
+        count: businesses.length,
+        totalPages: Math.ceil(totalCount / limitNumber),
+        currentPage: pageNumber,
+        data: businesses
+      });
+    }
+
     // Initialize aggregation pipeline
     let aggregationPipeline = [];
 
-    // Step 1: Geospatial Filtering (optional)
+    // 1: Geospatial Filtering (optional)
     if (longitude && latitude && parsedRadius.max) {
       aggregationPipeline.push({
         $geoNear: {
@@ -179,7 +220,7 @@ exports.getAllBusiness = async (req, res) => {
       });
     }
 
-    // Step 2: Basic Business-Level Filters
+    // 2: Basic Business-Level Filters (only fields that exist directly in the Business collection)
     const businessMatch = {};
 
     // Business Name Filter
@@ -208,27 +249,56 @@ exports.getAllBusiness = async (req, res) => {
       businessMatch.businessType = { $in: selectedProviders };
     }
 
-    // Business Rating Filter (Assuming you want businesses with ratings >= selectedRating)
+    // Business Rating Filter
     if (selectedRating) {
       businessMatch.ratings = { $gte: Number(selectedRating) };
     }
 
-    // Availability Option Filter
-    // Availability Option Filter (from services model)
+    // Expertise Level Filter
+    if (expertiseLevel) {
+      businessMatch.expertise_level = expertiseLevel;
+    }
+
+    if (Object.keys(businessMatch).length > 0) {
+      aggregationPipeline.push({ $match: businessMatch });
+    }
+
+    // 3: Lookup Services
+    aggregationPipeline.push({
+      $lookup: {
+        from: "services",
+        localField: "services",
+        foreignField: "_id",
+        as: "services"
+      }
+    });
+
+    // 4: Unwind Services
+    aggregationPipeline.push({
+      $unwind: {
+        path: "$services",
+        preserveNullAndEmptyArrays: false // Only include businesses with at least one service
+      }
+    });
+
+    // 5: Service-Level Filters
+    const serviceMatch = { "services.status": "approved" };
+
+    // Availability Option Filter (now that services are looked up and unwound)
     if (availabilityOption) {
       const now = new Date();
       let availabilityCriteria = {};
 
       switch (availabilityOption.toLowerCase()) {
         case 'immediate':
-          // Immediate availability: Check if current date is within the service's availability range
+          // Immediate availability: current date within the availability range
           availabilityCriteria = {
             "services.availability.start": { $lte: now },
             "services.availability.end": { $gte: now }
           };
           break;
         case 'within a week':
-          // Availability within a week: Check if service availability is within the next 7 days
+          // Availability within a week
           const nextWeek = new Date();
           nextWeek.setDate(now.getDate() + 7);
           availabilityCriteria = {
@@ -237,8 +307,8 @@ exports.getAllBusiness = async (req, res) => {
           };
           break;
         default:
-          // Custom date range: Expect user to send startDate and endDate
-          const { startDate, endDate } = availabilityOption;
+          // Custom date range from startDate and endDate
+          const { startDate, endDate } = req.query; // Make sure these are passed as query params
           if (startDate && endDate) {
             const start = new Date(startDate);
             const end = new Date(endDate);
@@ -253,54 +323,17 @@ exports.getAllBusiness = async (req, res) => {
       }
 
       if (Object.keys(availabilityCriteria).length > 0) {
-        aggregationPipeline.push({
-          $match: {
-            $or: [
-              { "services.availability": { $elemMatch: availabilityCriteria } }
-            ]
-          }
-        });
+        // Incorporate availability criteria into serviceMatch
+        serviceMatch["services.availability"] = { $elemMatch: availabilityCriteria };
       }
     }
-
-
-    // Expertise Level Filter
-    if (expertiseLevel) {
-      businessMatch.expertise_level = expertiseLevel;
-    }
-
-    // Apply Business-Level Filters
-    if (Object.keys(businessMatch).length > 0) {
-      aggregationPipeline.push({ $match: businessMatch });
-    }
-
-    // Step 3: Lookup Services
-    aggregationPipeline.push({
-      $lookup: {
-        from: "services",
-        localField: "services",
-        foreignField: "_id",
-        as: "services"
-      }
-    });
-
-    // Step 4: Unwind Services to Apply Service-Level Filters
-    aggregationPipeline.push({
-      $unwind: {
-        path: "$services",
-        preserveNullAndEmptyArrays: false // Only include businesses with at least one service
-      }
-    });
-
-    // Step 5: Service-Level Filters
-    const serviceMatch = { "services.status": "approved" };
 
     // Service Name Filter
     if (serviceName) {
       serviceMatch["services.title"] = { $regex: serviceName, $options: "i" };
     }
 
-    // Service Category Filter (selectedCategories as service type)
+    // Service Category Filter
     if (selectedCategories.length > 0) {
       serviceMatch["services.category"] = { $in: selectedCategories };
     }
@@ -314,7 +347,7 @@ exports.getAllBusiness = async (req, res) => {
       if (parsedPriceRange.max !== undefined) {
         serviceMatch["services.pricing.amount"].$lte = parsedPriceRange.max;
       }
-      // Remove empty pricing.amount if no conditions applied
+      // If no conditions applied, remove empty object
       if (Object.keys(serviceMatch["services.pricing.amount"]).length === 0) {
         delete serviceMatch["services.pricing.amount"];
       }
@@ -326,9 +359,11 @@ exports.getAllBusiness = async (req, res) => {
     }
 
     // Apply Service-Level Filters
-    aggregationPipeline.push({ $match: serviceMatch });
+    if (Object.keys(serviceMatch).length > 0) {
+      aggregationPipeline.push({ $match: serviceMatch });
+    }
 
-    // Step 6: Re-group Businesses with Filtered Services
+    // 6: Group Businesses back with filtered services
     aggregationPipeline.push({
       $group: {
         _id: "$_id",
@@ -337,7 +372,6 @@ exports.getAllBusiness = async (req, res) => {
         businessType: { $first: "$businessType" },
         years_of_experience: { $first: "$years_of_experience" },
         ratings: { $first: "$ratings" },
-        availability: { $first: "$availability" },
         expertise_level: { $first: "$expertise_level" },
         description: { $first: "$description" },
         logo: { $first: "$logo" },
@@ -355,37 +389,32 @@ exports.getAllBusiness = async (req, res) => {
       }
     });
 
-    // Step 7: Add numberOfReviews Field
+    // 7: Add numberOfReviews Field
     aggregationPipeline.push({
       $addFields: {
         numberOfReviews: { $size: { $ifNull: ["$reviews", []] } }
       }
     });
 
-    // Step 8: Apply Business-Level Rating and Review Filters
+    // 8: Apply Post-Group Filters (Rating, minReviews)
     const postGroupMatch = {};
-
     if (selectedRating) {
       postGroupMatch["ratings"] = { $gte: Number(selectedRating) };
     }
-
     if (minReviews) {
       postGroupMatch["numberOfReviews"] = { $gte: Number(minReviews) };
     }
-
     if (Object.keys(postGroupMatch).length > 0) {
       aggregationPipeline.push({ $match: postGroupMatch });
     }
 
-    // Step 9: Sorting Options
-    // Map frontend sortingOption to backend sortBy
+    // 9: Sorting Options
     const sortOptions = {
       "Highest Rating": { ratings: -1 },
       "Most Reviewed": { numberOfReviews: -1 },
       "Newest": { createdAt: -1 },
       "Lowest Price": { "services.pricing.amount": 1 },
       "Highest Price": { "services.pricing.amount": -1 }
-      // Add more sorting options as needed
     };
 
     if (sortingOption && sortOptions[sortingOption]) {
@@ -395,7 +424,7 @@ exports.getAllBusiness = async (req, res) => {
       aggregationPipeline.push({ $sort: { createdAt: -1 } });
     }
 
-    // Step 10: Pagination
+    // 10: Pagination
     const pageNumber = parseInt(page, 10) || 1;
     const limitNumber = parseInt(limit, 10) || 20;
     const skip = (pageNumber - 1) * limitNumber;
@@ -406,9 +435,14 @@ exports.getAllBusiness = async (req, res) => {
     // Execute Aggregation Pipeline
     const businesses = await Business.aggregate(aggregationPipeline).exec();
 
-    // Count Total Documents for Pagination Metadata (without $skip and $limit)
+    // Count Total Documents for Pagination
     let countPipeline = aggregationPipeline.filter(stage => !('$skip' in stage) && !('$limit' in stage));
-    countPipeline.push({ $count: "totalCount" });
+    // Remove stages that were added solely for pagination after we took snapshot of pipeline
+    // Actually, let's reconstruct countPipeline without pagination stages:
+    countPipeline = aggregationPipeline
+      .filter(stage => !('$skip' in stage) && !('$limit' in stage) && !('$sort' in stage))
+      .concat({ $count: "totalCount" });
+
     const totalBusinessesResult = await Business.aggregate(countPipeline).exec();
     const totalCount = totalBusinessesResult.length ? totalBusinessesResult[0].totalCount : 0;
 

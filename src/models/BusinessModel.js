@@ -91,7 +91,11 @@ const businessSchema = new mongoose.Schema({
     }
   ],
   workingHours: String,
-  subscriptionPlan: String,
+  subscriptionPlan: {
+    type: String,
+    enum: ["Basic", "Premium", "Advance"],
+    default: "Basic"
+  },
   ratings: {
     type: Number,
     min: 0,

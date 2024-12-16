@@ -32,7 +32,7 @@ const serviceSchema = new mongoose.Schema({
     type: String,
     enum: ["Fixed Price", "Hourly Rate", "Project Based"]
   },
-  availability: [Date],
+  availability: Date,
   images: [String],
   location: {
     type: {
