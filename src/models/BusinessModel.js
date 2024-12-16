@@ -91,7 +91,6 @@ const businessSchema = new mongoose.Schema({
     }
   ],
   workingHours: String,
-  availability: String,
   subscriptionPlan: String,
   ratings: {
     type: Number,

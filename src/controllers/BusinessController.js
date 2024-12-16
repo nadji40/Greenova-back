@@ -71,7 +71,7 @@ exports.createBusiness = async (req, res) => {
     const defaultCertifications = ["ISO Certification",
       "Safety Certifications",
       "Quality Assurance Certifications",];
-      defaultCertifications.forEach((defaultCertification) => {
+    defaultCertifications.forEach((defaultCertification) => {
       if (!dynamicField.certifications.includes(defaultCertification)) {
         dynamicField.certifications.push(defaultCertification);
       }
@@ -214,36 +214,55 @@ exports.getAllBusiness = async (req, res) => {
     }
 
     // Availability Option Filter
+    // Availability Option Filter (from services model)
     if (availabilityOption) {
       const now = new Date();
       let availabilityCriteria = {};
 
       switch (availabilityOption.toLowerCase()) {
         case 'immediate':
+          // Immediate availability: Check if current date is within the service's availability range
           availabilityCriteria = {
-            $elemMatch: {
-              start: { $lte: now },
-              end: { $gte: now }
-            }
+            "services.availability.start": { $lte: now },
+            "services.availability.end": { $gte: now }
           };
           break;
         case 'within a week':
+          // Availability within a week: Check if service availability is within the next 7 days
           const nextWeek = new Date();
           nextWeek.setDate(now.getDate() + 7);
           availabilityCriteria = {
-            $elemMatch: {
-              start: { $lte: nextWeek },
-              end: { $gte: now }
-            }
+            "services.availability.start": { $lte: nextWeek },
+            "services.availability.end": { $gte: now }
           };
           break;
-        // Add more cases as needed
+        default:
+          // Custom date range: Expect user to send startDate and endDate
+          const { startDate, endDate } = availabilityOption;
+          if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            if (start && end) {
+              availabilityCriteria = {
+                "services.availability.start": { $gte: start },
+                "services.availability.end": { $lte: end }
+              };
+            }
+          }
+          break;
       }
 
       if (Object.keys(availabilityCriteria).length > 0) {
-        businessMatch.availability = availabilityCriteria;
+        aggregationPipeline.push({
+          $match: {
+            $or: [
+              { "services.availability": { $elemMatch: availabilityCriteria } }
+            ]
+          }
+        });
       }
     }
+
 
     // Expertise Level Filter
     if (expertiseLevel) {
