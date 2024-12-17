@@ -33,9 +33,9 @@ const placeOrder = async (req, res) => {
             else if (itemType === 'sparePart') {
                 itemRecord = await SparePart.findById(itemId);
             }
-            // } else if (itemType === 'rawMaterial') {
-            //     itemRecord = await RawMaterial.findById(itemId);
-            // }
+            else if (itemType === 'rawMaterial') {
+                itemRecord = await RawMaterial.findById(itemId);
+            }
 
             if (!itemRecord) {
                 return res.status(404).json({ message: `${itemType} not found` });
