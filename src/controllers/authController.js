@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const uploadOnCloudinary = require('../utils/cloudinary');
+const Business = require("../models/BusinessModel")
 
 exports.register = async (req, res) => {
   try {
@@ -90,7 +91,7 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password, userType } = req.body;
-
+    let isBusinessFound = '';
     // Validate input
     if (!email || !password) {
       return res.status(400).json({
@@ -116,6 +117,7 @@ exports.login = async (req, res) => {
       });
     }
 
+
     const passwordCheck = await bcrypt.compare(password, user.password)
     if (!passwordCheck) {
       return res.status(401).json({
@@ -131,6 +133,13 @@ exports.login = async (req, res) => {
       { expiresIn: '24h' }
     );
 
+    const business = await Business.findOne({ user: user._id })
+    if (business) {
+      isBusinessFound = "Business Found"
+    } else {
+      isBusinessFound = "Business not Found"
+    }
+
     res.status(200).json({
       success: true,
       data: {
@@ -143,7 +152,8 @@ exports.login = async (req, res) => {
           phoneNumber: user.phoneNumber,
           userType: user.userType
         },
-        token
+        token,
+        isBusinessFound
       },
       message: "User loggedIn Successfully"
     });
