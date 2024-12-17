@@ -45,9 +45,7 @@ exports.createRawMaterial = async (req, res) => {
                 rawMaterialCategory: [
                     "Metal", "Plastic", "Wood", "Chemicals",
                 ],
-                rawMaterialIndustrialStandards: [
-                    "ISO 9001", "ASTM"
-                ],
+              
             });
         }
         // default machinetpes 
@@ -58,24 +56,10 @@ exports.createRawMaterial = async (req, res) => {
             }
         });
 
-        // default machineBrands 
-        const defaultrawMaterialIndustrialStandards = ["ISO 9001", "ASTM"];
-        defaultrawMaterialIndustrialStandards.forEach((defaultrawMaterialIndustrialStandard) => {
-            if (!dynamicField.rawMaterialIndustrialStandards.includes(defaultrawMaterialIndustrialStandard)) {
-                dynamicField.rawMaterialIndustrialStandards.push(defaultrawMaterialIndustrialStandard);
-            }
-        });
-
         // Add new machinetypes to DynamicField if they do not exist already
         if (!dynamicField.rawMaterialCategory.includes(rawMaterial.materialCategory)) {
             // If not, add the new category
             dynamicField.rawMaterialCategory.push(rawMaterial.materialCategory);
-        }
-
-        // Add new MachineBrands to DynamicField if they do not exist already
-        if (!dynamicField.rawMaterialIndustrialStandards.includes(rawMaterial.industrialStandards)) {
-            // If not, add the new category
-            dynamicField.rawMaterialIndustrialStandards.push(rawMaterial.industrialStandards);
         }
 
         // Save the updated dynamic fields

@@ -97,12 +97,12 @@ const dynamicFieldSchema = new mongoose.Schema(
                 default: ["Metal", "Plastic", "Wood", "Chemicals"], // Predefined categories
             },
         ],
-        rawMaterialIndustrialStandards: [
-            {
-                type: String,
-                default: ["ISO 9001", "ASTM"], // Predefined categories
-            },
-        ],
+        // rawMaterialIndustrialStandards: [
+        //     {
+        //         type: String,
+        //         default: ["ISO 9001", "ASTM"], // Predefined categories
+        //     },
+        // ],
     },
     { timestamps: true }
 );
