@@ -359,8 +359,6 @@ exports.getAllSpareParts = async (req, res) => {
   }
 };
 
-
-
 exports.getSparePart = async (req, res) => {
   try {
     const sparePart = await SparePart.findById(req.params.id)
@@ -418,6 +416,10 @@ exports.deleteSparePart = async (req, res) => {
       });
     }
     const sparePart = await SparePart.findById(req.params.id);
+    const business = await Business.findOne({ user: req.user.userId })
+    if (!business) {
+      return res.status(404).json({ success: false, message: 'Business not found' });
+    }
 
     if (!sparePart) {
       return res.status(404).json({
@@ -430,8 +432,23 @@ exports.deleteSparePart = async (req, res) => {
     console.log('Spare Part Supplier:', sparePart.supplier);
     console.log('Current User:', req.user.userId);
 
-    await SparePart.findByIdAndDelete(req.params.id);
+    // Check if the machinery is associated with the business
+    const isSparePartsAssociated = business.spareParts.includes(req.params.id);
 
+    if (!isSparePartsAssociated) {
+      return res.status(400).json({
+        success: false,
+        message: 'Machinery is not associated with this business.'
+      });
+    }
+
+    // Remove the machinery ID from the business's machineries array
+    business.spareParts = business.spareParts.filter(
+      (id) => id.toString() !== req.params.id
+    );
+    await business.save();
+    await SparePart.findByIdAndDelete(req.params.id);
+    
     res.status(200).json({
       success: true,
       data: {},

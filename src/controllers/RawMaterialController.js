@@ -303,6 +303,10 @@ exports.deleteRawMaterial = async (req, res) => {
             });
         }
         const rawMaterial = await RawMaterial.findById(req.params.id);
+        const business = await Business.findOne({ user: req.user.userId })
+        if (!business) {
+            return res.status(404).json({ success: false, message: 'Business not found' });
+        }
         if (!rawMaterial) {
             return res.status(404).json({
                 success: false,
@@ -310,6 +314,21 @@ exports.deleteRawMaterial = async (req, res) => {
             });
         }
 
+        // Check if the machinery is associated with the business
+        const isMaterialAssociated = business.rawMaterial.includes(req.params.id);
+
+        if (!isMaterialAssociated) {
+            return res.status(400).json({
+                success: false,
+                message: 'Material is not associated with this business.'
+            });
+        }
+
+        // Remove the machinery ID from the business's machineries array
+        business.rawMaterial = business.rawMaterial.filter(
+            (id) => id.toString() !== req.params.id
+        );
+        await business.save();
         await RawMaterial.findByIdAndDelete(req.params.id);
 
         res.status(200).json({

@@ -443,10 +443,30 @@ const deleteMachinery = async (req, res) => {
             });
         }
         const machinery = await MachinerySale.findById(req.params.id);
+        const business = await Business.findOne({ user: req.user.userId })
+        if (!business) {
+            return res.status(404).json({ success: false, message: 'Business not found' });
+        }
         if (!machinery) {
             return res.status(404).json({ success: false, message: 'Machinery not found' });
         }
+        // Check if the machinery is associated with the business
+        const isMachineryAssociated = business.machines.includes(req.params.id);
+
+        if (!isMachineryAssociated) {
+            return res.status(400).json({
+                success: false,
+                message: 'Machinery is not associated with this business.'
+            });
+        }
+
+        // Remove the machinery ID from the business's machineries array
+        business.machines = business.machines.filter(
+            (id) => id.toString() !== req.params.id
+        );
+        await business.save();
         await machinery.deleteOne();
+
         res.status(200).json({ success: true, message: 'Machinery deleted successfully' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

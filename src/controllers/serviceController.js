@@ -103,8 +103,26 @@ exports.deleteService = async (req, res) => {
             });
         }
         const { id } = req.params;
-        const service = await Service.findByIdAndDelete(id);
+        const business = await Business.findOne({ user: req.user.userId })
+        if (!business) {
+            return res.status(404).json({ success: false, message: 'Business not found' });
+        }
+        // Check if the machinery is associated with the business
+        const isMachineryAssociated = business.services.includes(id);
 
+        if (!isMachineryAssociated) {
+            return res.status(400).json({
+                success: false,
+                message: 'This service is not associated with this business.'
+            });
+        }
+
+        // Remove the machinery ID from the business's machineries array
+        business.services = business.services.filter(
+            (id) => id.toString() !== req.params.id
+        );
+        await business.save();
+        const service = await Service.findByIdAndDelete(id);
         if (!service) {
             return res.status(404).json({
                 success: false,
