@@ -18,8 +18,10 @@ const rawMateriaLSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    Form: {
+    form: {
         type: String,
+        required: true,
+        enum: ["Sheets", "Tubes", "Granules", "Liquids"]
     },
     volume: {
         amount: {

@@ -85,6 +85,7 @@ exports.createRawMaterial = async (req, res) => {
 
 exports.getAllRawMaterials = async (req, res) => {
     try {
+        // Parsing pagination parameters
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
@@ -92,20 +93,92 @@ exports.getAllRawMaterials = async (req, res) => {
         // Initialize the aggregation pipeline
         const pipeline = [];
 
-        // Match filters
+        // Initialize match filters
         const matchFilters = {};
 
-        // PartType filter (multiple categories)
-        if (req.query.category) {
-            const categories = req.query.category.split(',').map(cat => cat.trim());
-            matchFilters.materialCategory = { $in: categories };
-        }
-        if (req.query.subCategory) {
-            const subCategories = req.query.subCategory.split(',').map(subCat => subCat.trim());
-            matchFilters.materialSubCategory = { $in: subCategories };  // Match any of the selected subcategories
+        // 1. Material Type Filter (materialType corresponds to materialCategory in schema)
+        if (req.query.materialType) {
+            const materialTypes = Array.isArray(req.query.materialType)
+                ? req.query.materialType
+                : req.query.materialType.split(',').map(mt => mt.trim());
+            matchFilters.materialCategory = { $in: materialTypes };
         }
 
-        // Location filters (Country and City)
+        // 2. Form Filter
+        if (req.query.form) {
+            const forms = Array.isArray(req.query.form)
+                ? req.query.form
+                : Object.keys(req.query.form).filter(key => req.query.form[key]);
+            matchFilters.Form = { $in: forms };
+        }
+
+        // 3. Availability Filter
+        if (req.query.availability) {
+            const availabilities = Array.isArray(req.query.availability)
+                ? req.query.availability
+                : Object.keys(req.query.availability).filter(key => req.query.availability[key]);
+            matchFilters.availability = { $in: availabilities };
+        }
+
+        // 4. Bulk Discounts Available Filter
+        if (req.query.bulkDiscountsAvailable !== undefined) {
+            const bulkDiscountAvailable = req.query.bulkDiscountsAvailable === 'true';
+            matchFilters.bulkDiscountsAvailable = bulkDiscountAvailable;
+        }
+
+        // 5. Price Type Filter (Fixed, Negotiable)
+        if (req.query.pricingType) {
+            if (req.query.pricingType.toLowerCase() === 'fixed') {
+                matchFilters.fixedPrice = true;
+                matchFilters.negotiablePrice = false;
+            } else if (req.query.pricingType.toLowerCase() === 'negotiable') {
+                matchFilters.fixedPrice = false;
+                matchFilters.negotiablePrice = true;
+            }
+            // If needed, handle multiple pricing types by using $in
+            // else {
+            //     const pricingTypes = Array.isArray(req.query.pricingType)
+            //         ? req.query.pricingType
+            //         : req.query.pricingType.split(',').map(pt => pt.trim());
+            //     const priceConditions = [];
+            //     pricingTypes.forEach(type => {
+            //         if (type.toLowerCase() === 'fixed') {
+            //             priceConditions.push({ fixedPrice: true, negotiablePrice: false });
+            //         } else if (type.toLowerCase() === 'negotiable') {
+            //             priceConditions.push({ fixedPrice: false, negotiablePrice: true });
+            //         }
+            //     });
+            //     if (priceConditions.length > 0) {
+            //         matchFilters.$or = priceConditions;
+            //     }
+            // }
+        }
+
+        // 6. Price Range Filter
+        if (req.query.priceRange) {
+            const [minPrice, maxPrice] = req.query.priceRange;
+            matchFilters['price.amount'] = {};
+            if (minPrice !== undefined && minPrice !== null) {
+                matchFilters['price.amount'].$gte = parseFloat(minPrice);
+            }
+            if (maxPrice !== undefined && maxPrice !== null) {
+                matchFilters['price.amount'].$lte = parseFloat(maxPrice);
+            }
+        }
+
+        // 7. Volume Range Filter
+        if (req.query.volumeRange) {
+            const [minVolume, maxVolume] = req.query.volumeRange;
+            matchFilters['volume.amount'] = {};
+            if (minVolume !== undefined && minVolume !== null) {
+                matchFilters['volume.amount'].$gte = parseFloat(minVolume);
+            }
+            if (maxVolume !== undefined && maxVolume !== null) {
+                matchFilters['volume.amount'].$lte = parseFloat(maxVolume);
+            }
+        }
+
+        // 8. Location Filters (Country and City)
         if (req.query.locationCountry) {
             matchFilters.locationCountry = req.query.locationCountry;
         }
@@ -113,59 +186,25 @@ exports.getAllRawMaterials = async (req, res) => {
             matchFilters.locationCity = req.query.locationCity;
         }
 
-        // Availability filter
-        if (req.query.availability) {
-            matchFilters.availability = req.query.availability;
-        }
-
-        // Price Range filter
-        if (req.query.minPrice || req.query.maxPrice) {
-            matchFilters.price = {};
-            if (req.query.minPrice) matchFilters.price.$gte = parseInt(req.query.minPrice);
-            if (req.query.maxPrice) matchFilters.price.$lte = parseInt(req.query.maxPrice);
-        }
-
-        // Price Type filter (Fixed or Negotiable)
-        if (req.query.priceType) {
-            if (req.query.priceType === 'fixed') {
-                matchFilters.fixedPrice = true;
-                matchFilters.negotiablePrice = false;
-            } else if (req.query.priceType === 'negotiable') {
-                matchFilters.fixedPrice = false;
-                matchFilters.negotiablePrice = true;
-            } else {
-                // If the priceType is neither 'fixed' nor 'negotiable', return an empty result
-                matchFilters.price = { $lt: 0 }; // This ensures no results will match the invalid priceType
+        // 9. Bulk Purchase Filter (Bulk Quantity)
+        if (req.query.quantityoptions) {
+            const quantityOptions = Array.isArray(req.query.quantityoptions)
+                ? req.query.quantityoptions
+                : Object.keys(req.query.quantityoptions).filter(key => req.query.quantityoptions[key]);
+            // Assuming 'Bulk Quantity' corresponds to a specific condition
+            // Adjust the condition based on your schema and requirements
+            if (quantityOptions.includes('Bulk Quantity')) {
+                // Example: quantity.amount >= a certain value
+                matchFilters['quantity.amount'] = { $gte: 100 }; // Adjust the value as needed
             }
         }
 
-        // Bulk discount filter
-        if (req.query.bulkDiscountsAvailable !== undefined) {
-            const bulkDiscount = req.query.bulkDiscountsAvailable === 'true'; // Convert string to boolean
-            matchFilters.bulkDiscountsAvailable = bulkDiscount; // Add filter for bulk discount availability
-        }
-
-        // Supplier Minimum Rating filter (added)
-        if (req.query.supplierMinRating) {
-            const minRating = parseFloat(req.query.supplierMinRating);
-            if (!isNaN(minRating) && minRating >= 0 && minRating <= 5) {
-                matchFilters.ratings = { $gte: minRating }; // Add supplier rating filter
-            }
-        }
-
-        // Add match stage to aggregation pipeline if any filters are provided
+        // Add the match stage to the pipeline if any filters are set
         if (Object.keys(matchFilters).length > 0) {
             pipeline.push({ $match: matchFilters });
         }
 
-        // Pagination
-        pipeline.push({ $skip: skip });
-        pipeline.push({ $limit: limit });
-
-        // Sorting by createdAt (desc)
-        pipeline.push({ $sort: { createdAt: -1 } });
-
-        // Lookup for supplier details (populate)
+        // 10. Lookup for supplier details (populate)
         pipeline.push({
             $lookup: {
                 from: 'businesses', // The collection name for Business
@@ -175,22 +214,60 @@ exports.getAllRawMaterials = async (req, res) => {
             }
         });
 
-        // Match suppliers' rating based on the supplierMinRating filter
-        if (req.query.supplierMinRating) {
-            pipeline.push({
-                $match: {
-                    'supplierDetails.ratings': { $gte: parseFloat(req.query.supplierMinRating) }
-                }
-            });
+        // 11. Unwind the supplierDetails array for easier filtering
+        pipeline.push({ $unwind: '$supplierDetails' });
+
+        // 12. Supplier Rating Filter
+        if (req.query.supplierRating) {
+            const minSupplierRating = parseFloat(req.query.supplierRating);
+            if (!isNaN(minSupplierRating) && minSupplierRating >= 0 && minSupplierRating <= 5) {
+                pipeline.push({
+                    $match: {
+                        'supplierDetails.ratings': { $gte: minSupplierRating }
+                    }
+                });
+            }
         }
 
-        // Project to clean up the output (optional)
+        // 13. Supplier Reviews Filter
+        if (req.query.supplierReviews) {
+            const minSupplierReviews = parseInt(req.query.supplierReviews);
+            if (!isNaN(minSupplierReviews) && minSupplierReviews >= 0) {
+                pipeline.push({
+                    $match: {
+                        'supplierDetails.reviews': { $gte: minSupplierReviews }
+                    }
+                });
+            }
+        }
+
+        // 14. Sorting by createdAt (desc)
+        pipeline.push({ $sort: { createdAt: -1 } });
+
+        // 15. Pagination
+        pipeline.push({ $skip: skip });
+        pipeline.push({ $limit: limit });
+
+        // 16. Project to clean up the output
         pipeline.push({
             $project: {
-                supplier: { $arrayElemAt: ['$supplierDetails', 0] }, // Get only the first element of the array (since $lookup returns an array)
+                supplier: {
+                    _id: '$supplierDetails._id',
+                    name: '$supplierDetails.name',
+                    ratings: '$supplierDetails.ratings',
+                    reviews: '$supplierDetails.reviews',
+                    // Add other supplier fields as needed
+                },
                 materialCategory: 1,
-                materialSubCategory: 1,
+                name: 1,
                 description: 1,
+                Form: 1,
+                volume: 1,
+                industrialStandards: 1,
+                purityLevel: 1,
+                quantity: 1,
+                fixedPrice: 1,
+                negotiablePrice: 1,
                 price: 1,
                 currency: 1,
                 material_images: 1,
@@ -199,24 +276,58 @@ exports.getAllRawMaterials = async (req, res) => {
                 availability: 1,
                 ratings: 1,
                 bulkDiscountsAvailable: 1,
+                bulkDiscounts: 1,
                 status: 1,
                 createdAt: 1
             }
         });
 
-        // Execute the aggregation
-        const rawMaterial = await RawMaterial.aggregate(pipeline);
+        // Execute the aggregation pipeline
+        const [rawMaterials, total] = await Promise.all([
+            RawMaterial.aggregate(pipeline),
+            RawMaterial.aggregate([
+                { $match: matchFilters },
+                {
+                    $lookup: {
+                        from: 'businesses',
+                        localField: 'supplier',
+                        foreignField: '_id',
+                        as: 'supplierDetails'
+                    }
+                },
+                { $unwind: '$supplierDetails' },
+                // Apply supplier filters if any
+                ...(req.query.supplierRating
+                    ? [
+                          {
+                              $match: {
+                                  'supplierDetails.ratings': { $gte: parseFloat(req.query.supplierRating) }
+                              }
+                          }
+                      ]
+                    : []),
+                ...(req.query.supplierReviews
+                    ? [
+                          {
+                              $match: {
+                                  'supplierDetails.reviews': { $gte: parseInt(req.query.supplierReviews) }
+                              }
+                          }
+                      ]
+                    : []),
+                { $count: 'total' }
+            ])
+        ]);
 
-        // Get the total count of matching documents (without pagination)
-        const total = await RawMaterial.countDocuments(matchFilters);
+        const totalCount = total[0] ? total[0].total : 0;
 
         res.status(200).json({
             success: true,
-            data: rawMaterial,
+            data: rawMaterials,
             pagination: {
                 currentPage: page,
-                totalPages: Math.ceil(total / limit),
-                totalItems: total,
+                totalPages: Math.ceil(totalCount / limit),
+                totalItems: totalCount,
                 itemsPerPage: limit
             }
         });

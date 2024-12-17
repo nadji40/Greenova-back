@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createRawMaterial, getRawMaterial, updateRawMaterial, deleteRawMaterial, getRawMaterialBySupplier } = require('../controllers/RawMaterialController');
+const { createRawMaterial, getRawMaterial, updateRawMaterial, deleteRawMaterial, getRawMaterialBySupplier, getAllRawMaterials } = require('../controllers/RawMaterialController');
 const auth = require('../middleware/auth');
 const upload = require('../middleware/multer.middleware');
 
@@ -11,7 +11,7 @@ router.delete('/:id', auth, deleteRawMaterial);
 router.get('/allRawMaterial', auth, getRawMaterialBySupplier);
 
 // Public routes
-// router.get('/', getAllSpareParts);
+router.get('/', getAllRawMaterials);
 router.get('/:id', getRawMaterial);
 
 
