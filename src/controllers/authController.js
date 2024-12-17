@@ -91,7 +91,7 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password, userType } = req.body;
-    let isBusinessFound = '';
+    let isBusinessFound = true;
     // Validate input
     if (!email || !password) {
       return res.status(400).json({
@@ -135,9 +135,9 @@ exports.login = async (req, res) => {
 
     const business = await Business.findOne({ user: user._id })
     if (business) {
-      isBusinessFound = "Business Found"
+      isBusinessFound = true
     } else {
-      isBusinessFound = "Business not Found"
+      isBusinessFound = false
     }
 
     res.status(200).json({
