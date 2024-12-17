@@ -41,9 +41,9 @@ const placeOrder = async (req, res) => {
                 return res.status(404).json({ message: `${itemType} not found` });
             }
 
-            if (price !== itemRecord.price) {
-                return res.status(400).json({ message: 'Item price mismatch' });
-            }
+            // if (price !== itemRecord.price) {
+            //     return res.status(400).json({ message: 'Item price mismatch' });
+            // }
 
             // Calculate the item cost (quantity * price)
             itemTotal += quantity * price;
