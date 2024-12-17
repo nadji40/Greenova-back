@@ -1,7 +1,7 @@
 const Order = require('../models/OrderModel');
 const MachinerySale = require('../models/MachinerySaleModel'); // Assuming you have these models
 const SparePart = require('../models/SparePartsModel');
-// const RawMaterial = require('../models/');
+const RawMaterial = require('../models/rawMaterialModel');
 
 // Place Order Controller
 const placeOrder = async (req, res) => {
