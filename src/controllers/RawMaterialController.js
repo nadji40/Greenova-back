@@ -45,7 +45,7 @@ exports.createRawMaterial = async (req, res) => {
                 rawMaterialCategory: [
                     "Metal", "Plastic", "Wood", "Chemicals",
                 ],
-              
+
             });
         }
         // default machinetpes 
@@ -106,19 +106,22 @@ exports.getAllRawMaterials = async (req, res) => {
 
         // 2. Form Filter
         if (req.query.form) {
-            const forms = Array.isArray(req.query.form)
+            const materialTypes = Array.isArray(req.query.form)
                 ? req.query.form
-                : Object.keys(req.query.form).filter(key => req.query.form[key]);
-            matchFilters.Form = { $in: forms };
+                : req.query.form.split(',').map(mt => mt.trim());
+            matchFilters.form = { $in: materialTypes };
         }
 
         // 3. Availability Filter
         if (req.query.availability) {
-            const availabilities = Array.isArray(req.query.availability)
-                ? req.query.availability
-                : Object.keys(req.query.availability).filter(key => req.query.availability[key]);
-            matchFilters.availability = { $in: availabilities };
+            matchFilters.availability = req.query.availability;
         }
+        // if (req.query.availability) {
+        //     const availabilities = Array.isArray(req.query.availability)
+        //         ? req.query.availability
+        //         : Object.keys(req.query.availability).filter(key => req.query.availability[key]);
+        //     matchFilters.availability = { $in: availabilities };
+        // }
 
         // 4. Bulk Discounts Available Filter
         if (req.query.bulkDiscountsAvailable !== undefined) {
@@ -155,28 +158,30 @@ exports.getAllRawMaterials = async (req, res) => {
         }
 
         // 6. Price Range Filter
-        if (req.query.priceRange) {
-            const [minPrice, maxPrice] = req.query.priceRange;
+        if (req.query.minPrice || req.query.maxPrice) {
             matchFilters['price.amount'] = {};
-            if (minPrice !== undefined && minPrice !== null) {
-                matchFilters['price.amount'].$gte = parseFloat(minPrice);
+            if (req.query.minPrice) {
+                matchFilters['price.amount'].$gte = parseFloat(req.query.minPrice);
             }
-            if (maxPrice !== undefined && maxPrice !== null) {
-                matchFilters['price.amount'].$lte = parseFloat(maxPrice);
+            if (req.query.maxPrice) {
+                matchFilters['price.amount'].$lte = parseFloat(req.query.maxPrice);
             }
         }
 
         // 7. Volume Range Filter
-        if (req.query.volumeRange) {
-            const [minVolume, maxVolume] = req.query.volumeRange;
+        const minVolume = req.query.volumeMin ? parseFloat(req.query.volumeMin) : null;
+        const maxVolume = req.query.volumeMax ? parseFloat(req.query.volumeMax) : null;
+
+        if (minVolume !== null || maxVolume !== null) {
             matchFilters['volume.amount'] = {};
-            if (minVolume !== undefined && minVolume !== null) {
-                matchFilters['volume.amount'].$gte = parseFloat(minVolume);
+            if (minVolume !== null) {
+                matchFilters['volume.amount'].$gte = minVolume;
             }
-            if (maxVolume !== undefined && maxVolume !== null) {
-                matchFilters['volume.amount'].$lte = parseFloat(maxVolume);
+            if (maxVolume !== null) {
+                matchFilters['volume.amount'].$lte = maxVolume;
             }
         }
+
 
         // 8. Location Filters (Country and City)
         if (req.query.locationCountry) {
@@ -195,7 +200,7 @@ exports.getAllRawMaterials = async (req, res) => {
             // Adjust the condition based on your schema and requirements
             if (quantityOptions.includes('Bulk Quantity')) {
                 // Example: quantity.amount >= a certain value
-                matchFilters['quantity.amount'] = { $gte: 100 }; // Adjust the value as needed
+                matchFilters['quantity.amount'] = { $gte: 6000 }; // Adjust the value as needed
             }
         }
 
@@ -218,28 +223,27 @@ exports.getAllRawMaterials = async (req, res) => {
         pipeline.push({ $unwind: '$supplierDetails' });
 
         // 12. Supplier Rating Filter
-        if (req.query.supplierRating) {
-            const minSupplierRating = parseFloat(req.query.supplierRating);
-            if (!isNaN(minSupplierRating) && minSupplierRating >= 0 && minSupplierRating <= 5) {
-                pipeline.push({
-                    $match: {
-                        'supplierDetails.ratings': { $gte: minSupplierRating }
-                    }
-                });
-            }
+        if (req.query.supplierMinRating) {
+            pipeline.push({
+                $match: {
+                    'supplierDetails.ratings': { $gte: parseFloat(req.query.supplierMinRating) }
+                }
+            });
         }
 
         // 13. Supplier Reviews Filter
-        if (req.query.supplierReviews) {
-            const minSupplierReviews = parseInt(req.query.supplierReviews);
-            if (!isNaN(minSupplierReviews) && minSupplierReviews >= 0) {
-                pipeline.push({
-                    $match: {
-                        'supplierDetails.reviews': { $gte: minSupplierReviews }
-                    }
-                });
+        if (req.query.minReviews) {
+            const minReviews = parseInt(req.query.minReviews);
+            if (!isNaN(minReviews)) {
+              pipeline.push({
+                $match: {
+                  $expr: {
+                    $gte: [{ $size: '$supplierDetails.reviews' }, minReviews]
+                  }
+                }
+              });
             }
-        }
+          }
 
         // 14. Sorting by createdAt (desc)
         pipeline.push({ $sort: { createdAt: -1 } });
@@ -299,21 +303,21 @@ exports.getAllRawMaterials = async (req, res) => {
                 // Apply supplier filters if any
                 ...(req.query.supplierRating
                     ? [
-                          {
-                              $match: {
-                                  'supplierDetails.ratings': { $gte: parseFloat(req.query.supplierRating) }
-                              }
-                          }
-                      ]
+                        {
+                            $match: {
+                                'supplierDetails.ratings': { $gte: parseFloat(req.query.supplierRating) }
+                            }
+                        }
+                    ]
                     : []),
                 ...(req.query.supplierReviews
                     ? [
-                          {
-                              $match: {
-                                  'supplierDetails.reviews': { $gte: parseInt(req.query.supplierReviews) }
-                              }
-                          }
-                      ]
+                        {
+                            $match: {
+                                'supplierDetails.reviews': { $gte: parseInt(req.query.supplierReviews) }
+                            }
+                        }
+                    ]
                     : []),
                 { $count: 'total' }
             ])
