@@ -178,26 +178,16 @@ exports.editProfile = async (req, res) => {
     const userId = req.user.userId;
     const { fullName, age, phoneNumber } = req.body;
 
-    let profilePictureUrl;
+    // let profilePictureUrl;
+    console.log("files", req.file);
+    console.log("files", req.file.path);
 
     // Check if a file was uploaded
-    if (req.file && req.file.path) {
-      try {
-        const profilePicture = await uploadOnCloudinary(req.file.path);
-        if (!profilePicture || !profilePicture.url) {
-          return res.status(400).json({
-            success: false,
-            error: "Image Upload Failed",
-          });
-        }
-        profilePictureUrl = profilePicture.url;
-      } catch (error) {
-        console.error('Error uploading to Cloudinary:', error);
-        return res.status(400).json({
-          success: false,
-          error: "Image Upload Failed",
-        });
-      }
+    let profilePictureUrl = null;
+    if (req.file) {
+      const uploadResult = await uploadOnCloudinary(req.file.buffer);
+      profilePictureUrl = uploadResult.url;
+      console.log("File uploaded to Cloudinary:", profilePictureUrl);
     }
 
     // Validate age
@@ -207,8 +197,6 @@ exports.editProfile = async (req, res) => {
         error: "Must be older than 19 years",
       });
     }
-
-
 
     // Prepare updated user data
     const updatedData = {
@@ -248,7 +236,6 @@ exports.editProfile = async (req, res) => {
   }
 };
 
-
 exports.getUser = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -278,5 +265,61 @@ exports.getUser = async (req, res) => {
       error: error.message
     })
 
+  }
+}
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        error: "Both old and new passwords are required",
+      })
+    }
+    const user = await User.findById(req.user.userId)
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: "User not found"
+      })
+    }
+
+    // Check if the old password is correct
+    const isMatch = await user.comparePassword(oldPassword)
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        error: "Old password is incorrect",
+      })
+    }
+
+    const isSameAsOld = await user.comparePassword(newPassword)
+    if (isSameAsOld) {
+      return res.status(400).json({
+        success: false,
+        error: "New password must be different from the old password",
+      })
+    }
+
+    const saltRounds = 10
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds)
+
+    // Update the user's password
+    user.password = hashedPassword
+
+    // Save the updated user
+    await user.save()
+
+    res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+    })
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    })
   }
 }

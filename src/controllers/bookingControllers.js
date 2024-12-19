@@ -7,8 +7,17 @@ exports.createBookings = async (req, res) => {
     try {
         const { serviceId, bookingDate, description, paymentMethod } = req.body;
 
-        console.log('Received serviceId:', serviceId);
-        console.log('Received bookingDate:', bookingDate);
+        const requiredFields = { serviceId, bookingDate, description, paymentMethod };
+        const missingFields = Object.entries(requiredFields)
+            .filter(([_, value]) => !value) // Find any field that is falsy or empty
+            .map(([key, _]) => key);
+
+        if (missingFields.length > 0) {
+            return res.status(400).json({
+                success: false,
+                error: `${missingFields.join(', ')} is required`
+            });
+        }
 
         if (!serviceId) {
             return res.status(400).json({
@@ -63,7 +72,7 @@ exports.createBookings = async (req, res) => {
         console.error('Error creating booking:', error);
         res.status(500).json({
             success: false,
-            error: 'Error creating booking'
+            error: error.message
         });
     }
 };

@@ -83,25 +83,73 @@ const placeOrder = async (req, res) => {
 
 const getOrders = async (req, res) => {
     try {
-        const orders = await Order.find({ userId: req.user.userId })
-        if (!orders) {
+        const { page = 1, limit = 5 } = req.query;
+
+        // Build filter with consistent field name
+        const filter = { userId: req.user.userId };
+
+        // Uncomment and use status if needed
+        // const { status } = req.query;
+        // if (status) {
+        //     filter.status = status;
+        // }
+
+        // Calculate pagination
+        const skip = (page - 1) * limit;
+
+        // Fetch orders with pagination and sorting
+        const orders = await Order.find(filter)
+            .skip(skip)
+            .limit(Number(limit))
+            .sort({ orderDate: -1 });
+
+        // Count total number of orders matching the filter
+        const total = await Order.countDocuments(filter);
+
+        // Send response
+        res.status(200).json({
+            success: true,
+            data: orders,
+            pagination: {
+                currentPage: Number(page),
+                totalPages: Math.ceil(total / limit),
+                totalItems: total,
+                itemsPerPage: Number(limit)
+            }
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            error: "Error fetching orders"
+        });
+    }
+};
+
+
+const getOrder = async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.id)
+        if (!order) {
             return res.status(404).json({
                 success: false,
-                error: "No Orders found"
+                error: "Order not found"
             })
         }
         return res.status(201).json({
             success: true,
-            message: "order fetched successfully",
-            data: orders
+            data: order,
+            message: "order fetched successfully"
         })
+
+
     } catch (error) {
         console.log(error);
         return res.status(500).json({
             success: false,
-            error: "Error fetching orders"
+            error: "Error fetching order"
         })
     }
 }
 
-module.exports = { placeOrder, getOrders };
+module.exports = { placeOrder, getOrders, getOrder };

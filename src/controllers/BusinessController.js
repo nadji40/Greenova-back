@@ -1,5 +1,7 @@
 const Business = require('../models/BusinessModel');
 const Service = require('../models/Service');
+const SparePart = require('../models/SparePartsModel');
+const RawMaterial = require('../models/rawMaterialModel');
 const MachinerySale = require('../models/MachinerySaleModel');
 const uploadOnCloudinary = require('../utils/cloudinary');
 const DynamicField = require("../models/DynamicFieldsModel")
@@ -474,10 +476,12 @@ exports.getBusiness = async (req, res) => {
     const business = await Business.findOne({ user: req.user.userId })
       .populate('services')
       .populate('machines')
+      .populate('spareParts')
+      .populate('rawMaterial')
       .populate({
         path: 'reviews.user',
         model: 'User',
-        select: 'fullName email profilePicture' // Only select specific fields from the User model
+        select: 'fullName email profilePicture age' // Only select specific fields from the User model
       });
 
     if (!business) {
@@ -518,14 +522,15 @@ exports.deleteBusiness = async (req, res) => {
     }
 
     await Service.deleteMany({ _id: { $in: business.services } });
-
     await MachinerySale.deleteMany({ _id: { $in: business.machines } });
+    await SparePart.deleteMany({ _id: { $in: business.spareParts } });
+    await RawMaterial.deleteMany({ _id: { $in: business.rawMaterial } });
 
     await Business.findByIdAndDelete(business._id);
 
     res.status(200).json({
       success: true,
-      message: 'Business, associated services, and machines deleted successfully'
+      message: 'Business, associated services, and others deleted successfully'
     });
   } catch (error) {
     res.status(400).json({
@@ -546,7 +551,7 @@ exports.updateBusiness = async (req, res) => {
     const { body, files } = req;
 
     // Define which fields are allowed to be updated
-    const allowedFields = ['businessName', 'description', 'businessType', 'location', 'contact_info', 'workingHours', 'availability', 'logo', 'banner'];
+    const allowedFields = ['businessName', 'description', 'businessType', 'location', 'contact_info', 'workingHours', 'availability', 'logo', 'banner', 'certifications'];
     // Filter the body to only include allowed fields
     const updatedData = {};
     allowedFields.forEach((field) => {
@@ -603,6 +608,17 @@ exports.updateBusiness = async (req, res) => {
 
     // Update the business with the filtered data
     const business = await Business.findOneAndUpdate({ user: req.user.userId }, updatedData, { new: true });
+    if (updatedData.certifications) {
+      let dynamicField = await DynamicField.findOne();
+      // Add new certifications to DynamicField if they do not exist already
+      const newCertifications = business.certifications || [];
+      for (const certification of newCertifications) {
+        if (!dynamicField.certifications.includes(certification)) {
+          dynamicField.certifications.push(certification);
+        }
+      }
+      await dynamicField.save();
+    }
 
     if (!business) {
       return res.status(404).json({
@@ -654,10 +670,12 @@ exports.nearByBusinesses = async (req, res) => {
     })
       .populate('services')
       .populate('machines')
+      .populate('spareParts')
+      .populate('rawMaterial')
       .populate({
         path: 'reviews.user',
         model: 'User',
-        select: 'fullName email profilePicture', // Select specific fields from the User model
+        select: 'fullName email profilePicture age', // Select specific fields from the User model
       });
 
     if (!businesses.length) {

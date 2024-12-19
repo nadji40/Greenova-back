@@ -107,10 +107,10 @@ exports.deleteService = async (req, res) => {
         if (!business) {
             return res.status(404).json({ success: false, message: 'Business not found' });
         }
-        // Check if the machinery is associated with the business
-        const isMachineryAssociated = business.services.includes(id);
+        // Check if the service is associated with the business
+        const isServiceAssociated = business.services.includes(id);
 
-        if (!isMachineryAssociated) {
+        if (!isServiceAssociated) {
             return res.status(400).json({
                 success: false,
                 message: 'This service is not associated with this business.'
@@ -458,7 +458,7 @@ exports.getServicesByBusiness = async (req, res) => {
         console.log('Business ID:', business._id);
         const services = await Service.find({
             business: business._id
-        })
+        }).populate('business')
         if (!services) {
             return res.status(404).json({
                 success: false,
@@ -477,4 +477,3 @@ exports.getServicesByBusiness = async (req, res) => {
         });
     }
 }
-

@@ -21,7 +21,7 @@ const rawMateriaLSchema = new mongoose.Schema({
     form: {
         type: String,
         required: true,
-        enum: ["Sheets", "Tubes", "Granules", "Liquids"]
+        enum: ["Tubes", "Bars", "Sheets", "Plates", "Wires", "Coils", "Pellets", "Granules", "Rods", "Films", "Foams", "Logs", "Planks", "Boards", "Veneers", "Chips", "Sawdust", "Powders", "Fabrics", "Yarns", "Threads", "Liquids", "Ores", "Aggregates", "Bricks", "Blocks", "Cement","Concrete"]
     },
     volume: {
         amount: {
