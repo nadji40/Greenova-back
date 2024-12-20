@@ -18,10 +18,6 @@ const machinerySaleSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  sub_category: {
-    type: String,
-    required: true
-  },
   condition: {
     type: String,
     enum: ['New', 'Used', 'Refurbished'],

@@ -89,6 +89,8 @@ exports.getAllRawMaterials = async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
+        console.log("Recieved Query", req.query);
+        
 
         // Initialize the aggregation pipeline
         const pipeline = [];

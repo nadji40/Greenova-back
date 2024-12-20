@@ -105,8 +105,9 @@ const createMachinery = async (req, res) => {
 // Get all machinery with filters
 const getAllMachinery = async (req, res) => {
     try {
-        // console.log("Received query:", req.query); // Log the query for debugging
+        console.log("Received query:", req.query); // Log the query for debugging
 
+        // Destructure query parameters with default values for pagination
         const {
             machine_name,
             machine_type,
@@ -136,8 +137,10 @@ const getAllMachinery = async (req, res) => {
             accessories_included,
             spare_parts_available,
             financingOptions,
+            keyword,
             page = 1,
-            limit = 12
+            limit = 12,
+            verified_suppliers, // Added for consistency with aggregationPipeline
         } = req.query;
 
         // Helper Functions
@@ -160,26 +163,30 @@ const getAllMachinery = async (req, res) => {
         // Initialize match stage
         let matchStage = {};
 
-        // Machine Type Filter
-        if (machine_type) {
-            matchStage.machine_type = { $regex: new RegExp(machine_type, 'i') };
-        }
+        // Function to handle multiple options
+        const handleMultipleOptions = (field, value) => {
+            if (value) {
+                const options = value.split(',').map(opt => opt.trim());
+                if (options.length > 1) {
+                    matchStage[field] = { $in: options };
+                } else {
+                    matchStage[field] = { $regex: new RegExp(options[0], 'i') };
+                }
+            }
+        };
 
+        // Apply multiple options filters
+        handleMultipleOptions('machine_type', machine_type);
+        handleMultipleOptions('condition', condition);
+        handleMultipleOptions('brand', brand);
+        handleMultipleOptions('model', model);
+        handleMultipleOptions('location_city', location_city);
+        handleMultipleOptions('availability', availability);
+        handleMultipleOptions('financingOptions', financingOptions);
+
+        // Machine Name Filter (assuming single value)
         if (machine_name) {
             matchStage.machine_name = { $regex: new RegExp(machine_name, 'i') };
-        }
-
-        // Condition Filter
-        if (condition) {
-            matchStage.condition = condition;
-        }
-
-        // Brand Filter
-        if (brand) {
-            matchStage.brand = { $regex: new RegExp(brand, 'i') };
-        }
-        if (model) {
-            matchStage.model = { $regex: new RegExp(model, 'i') };
         }
 
         // Model Year Range Filter
@@ -200,18 +207,12 @@ const getAllMachinery = async (req, res) => {
         if (fixed_price) matchStage.fixed_price = parseBoolean(fixed_price);
         if (negotiable_price) matchStage.negotiable_price = parseBoolean(negotiable_price);
 
-        // Geographic Location Filter
+        // Geographic Location Filter (Country - assuming single value)
         if (location_country) {
             matchStage.location_country = { $regex: new RegExp(location_country, 'i') };
         }
-        if (location_city) {
-            matchStage.location_city = { $regex: new RegExp(location_city, 'i') };
-        }
 
-        // Availability Filter
-        if (availability) {
-            matchStage.availability = availability;
-        }
+        // Availability Filter is handled in handleMultipleOptions
 
         // Accessories and Spare Parts Filter
         if (accessories_included) {
@@ -225,10 +226,20 @@ const getAllMachinery = async (req, res) => {
         if (after_sales_service) {
             matchStage.after_sales_service = parseBoolean(after_sales_service);
         }
-        // **Financing Options Filter**
-        if (financingOptions) {
-            matchStage.financingOptions = financingOptions;
+
+        // Keyword Search Filter
+        if (keyword) {
+            matchStage.$or = [
+                { machine_name: { $regex: keyword, $options: 'i' } },
+                { machine_description: { $regex: keyword, $options: 'i' } }, // Ensure correct field name
+                { machine_type: { $regex: keyword, $options: 'i' } },
+                { brand: { $regex: keyword, $options: 'i' } },
+                { model: { $regex: keyword, $options: 'i' } }
+            ];
         }
+
+        // Debugging: Log the constructed matchStage
+        console.log("Constructed matchStage:", JSON.stringify(matchStage, null, 2));
 
         // Initialize Aggregation Pipeline
         const aggregationPipeline = [
@@ -243,7 +254,7 @@ const getAllMachinery = async (req, res) => {
             },
             { $unwind: '$business' },
             // Supplier Verification Filter
-            ...(req.query.verified_suppliers === 'true' ? [{
+            ...(verified_suppliers === 'true' ? [{
                 $match: {
                     'business.verified': true
                 }
@@ -294,12 +305,13 @@ const getAllMachinery = async (req, res) => {
                     }
                 }
             }] : []),
-            // **Financing Options Filter in Aggregation Pipeline**
-            ...(financingOptions ? [{
-                $match: {
-                    'financingOptions': financingOptions
-                }
-            }] : []),
+            // Financing Options Filter (handled earlier, but ensuring in aggregation)
+            // Already handled via matchStage, but including if necessary
+            // ...(financingOptions ? [{
+            //     $match: {
+            //         'financingOptions': { $in: Array.isArray(financingOptions) ? financingOptions : [financingOptions] }
+            //     }
+            // }] : []),
             // Sort Stage
             { $sort: { createdAt: -1 } },
             // Pagination Stages
@@ -323,7 +335,7 @@ const getAllMachinery = async (req, res) => {
             },
             { $unwind: '$business' },
             // Apply same filters as in aggregationPipeline before pagination
-            ...(req.query.verified_suppliers === 'true' ? [{
+            ...(verified_suppliers === 'true' ? [{
                 $match: {
                     'business.verified': true
                 }
@@ -340,8 +352,10 @@ const getAllMachinery = async (req, res) => {
             }] : []),
             ...(power_min || power_max ? [{
                 $match: {
-                    ...(power_min ? { 'power.amount': { $gte: parseNumber(power_min) } } : {}),
-                    ...(power_max ? { 'power.amount': { $lte: parseNumber(power_max) } } : {})
+                    'power.amount': {
+                        ...(power_min ? { 'power.amount': { $gte: parseNumber(power_min) } } : {}),
+                        ...(power_max ? { 'power.amount': { $lte: parseNumber(power_max) } } : {})
+                    }
                 }
             }] : []),
             ...(weight_min || weight_max ? [{
@@ -370,7 +384,7 @@ const getAllMachinery = async (req, res) => {
             }] : []),
             ...(financingOptions ? [{
                 $match: {
-                    'financingOptions': financingOptions
+                    'financingOptions': { $in: Array.isArray(financingOptions) ? financingOptions : [financingOptions] }
                 }
             }] : []),
             { $count: 'count' }
@@ -394,6 +408,7 @@ const getAllMachinery = async (req, res) => {
         });
     }
 };
+
 
 // Get single machinery
 const getMachinery = async (req, res) => {
