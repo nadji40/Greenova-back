@@ -178,12 +178,10 @@ exports.editProfile = async (req, res) => {
     const userId = req.user.userId;
     const { fullName, age, phoneNumber } = req.body;
 
-    // let profilePictureUrl;
     console.log("files", req.file);
-    console.log("files", req.file.path);
 
-    // Check if a file was uploaded
-    let profilePictureUrl = null;
+    // Initialize as undefined
+    let profilePictureUrl;
     if (req.file) {
       const uploadResult = await uploadOnCloudinary(req.file.buffer);
       profilePictureUrl = uploadResult.url;
@@ -203,9 +201,8 @@ exports.editProfile = async (req, res) => {
       ...(fullName !== undefined && { fullName }),
       ...(age !== undefined && { age }),
       ...(phoneNumber !== undefined && { phoneNumber }),
-      ...(profilePictureUrl !== undefined && { profilePicture: profilePictureUrl }),
+      ...(profilePictureUrl && { profilePicture: profilePictureUrl }),
     };
-
 
     // Update user
     const updatedUser = await User.findByIdAndUpdate(userId, updatedData, {
@@ -235,6 +232,7 @@ exports.editProfile = async (req, res) => {
     });
   }
 };
+
 
 exports.getUser = async (req, res) => {
   try {
