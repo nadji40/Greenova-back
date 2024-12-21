@@ -697,7 +697,7 @@ exports.nearByBusinesses = async (req, res) => {
       location: {
         $near: {
           $geometry: userLocation,
-          $maxDistance: 5000, // 5000 meters = 5 km
+          $maxDistance: 50000, // 5000 meters = 5 km
         },
       },
     })
