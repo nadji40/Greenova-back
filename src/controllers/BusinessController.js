@@ -9,6 +9,7 @@ const DynamicField = require("../models/DynamicFieldsModel")
 exports.createBusiness = async (req, res) => {
   try {
     const { files, body, user } = req;
+    console.log(body);
 
     if (user.userType != "serviceProvider") {
       return res.status(403).json({
@@ -115,10 +116,10 @@ exports.getAllBusiness = async (req, res) => {
       selectedCategories,
       selectedRating,
       radius, // Expected as object: { min: '5', max: '50' }
-      expertiseLevel,
-      availabilityOption,
+      expertiseLevel, // **Now can be multiple**
+      availabilityOption, // **Now can be multiple**
       minReviews,
-      pricingType,
+      pricingType, // **Now can be multiple**
       selectedProviders,
       selectedCertifications,
       experienceRange,
@@ -127,6 +128,7 @@ exports.getAllBusiness = async (req, res) => {
       businessName,
       longitude,
       latitude,
+      keyword, // **New: Keyword Parameter**
       page = 1,
       limit = 20
     } = req.query;
@@ -146,6 +148,9 @@ exports.getAllBusiness = async (req, res) => {
     selectedCategories = parseToArray(selectedCategories);
     selectedProviders = parseToArray(selectedProviders);
     selectedCertifications = parseToArray(selectedCertifications);
+    expertiseLevel = parseToArray(expertiseLevel); // **Parsed as array**
+    pricingType = parseToArray(pricingType); // **Parsed as array**
+    availabilityOption = parseToArray(availabilityOption); // **Parsed as array**
 
     // Parse priceRange
     let parsedPriceRange = {};
@@ -165,20 +170,21 @@ exports.getAllBusiness = async (req, res) => {
 
     // Determine if we have filters that would restrict the result set
     const hasFilters =
-      longitude && latitude && parsedRadius.max ||
+      (longitude && latitude && parsedRadius.max) ||
       (businessName && businessName.trim() !== "") ||
       (selectedCertifications && selectedCertifications.length > 0) ||
       experienceRange ||
       (selectedProviders && selectedProviders.length > 0) ||
       selectedRating ||
-      expertiseLevel ||
-      availabilityOption ||
+      (expertiseLevel && expertiseLevel.length > 0) || // **Updated**
+      (availabilityOption && availabilityOption.length > 0) || // **Updated**
       serviceName ||
       (selectedCategories && selectedCategories.length > 0) ||
-      pricingType ||
+      (pricingType && pricingType.length > 0) || // **Updated**
       parsedPriceRange.min !== undefined ||
       parsedPriceRange.max !== undefined ||
-      minReviews;
+      minReviews ||
+      (keyword && keyword !== ""); // **Include Keyword in hasFilters**
 
     // If no filters, return all businesses directly
     if (!hasFilters) {
@@ -186,7 +192,6 @@ exports.getAllBusiness = async (req, res) => {
       const limitNumber = parseInt(limit, 10) || 20;
       const skip = (pageNumber - 1) * limitNumber;
 
-      // Optionally, you could apply sorting as well. For now, just sort by creation date descending.
       const businesses = await Business.find({})
         .populate('services')
         .sort({ createdAt: -1 })
@@ -256,9 +261,9 @@ exports.getAllBusiness = async (req, res) => {
       businessMatch.ratings = { $gte: Number(selectedRating) };
     }
 
-    // Expertise Level Filter
-    if (expertiseLevel) {
-      businessMatch.expertise_level = expertiseLevel;
+    // Expertise Level Filter (using $in)
+    if (expertiseLevel.length > 0) {
+      businessMatch.expertise_level = { $in: expertiseLevel };
     }
 
     if (Object.keys(businessMatch).length > 0) {
@@ -287,46 +292,52 @@ exports.getAllBusiness = async (req, res) => {
     const serviceMatch = { "services.status": "approved" };
 
     // Availability Option Filter (now that services are looked up and unwound)
-    if (availabilityOption) {
+    if (availabilityOption.length > 0) {
       const now = new Date();
-      let availabilityCriteria = {};
+      const availabilityOrConditions = [];
 
-      switch (availabilityOption.toLowerCase()) {
-        case 'immediate':
-          // Immediate availability: current date within the availability range
-          availabilityCriteria = {
-            "services.availability.start": { $lte: now },
-            "services.availability.end": { $gte: now }
-          };
-          break;
-        case 'within a week':
-          // Availability within a week
-          const nextWeek = new Date();
-          nextWeek.setDate(now.getDate() + 7);
-          availabilityCriteria = {
-            "services.availability.start": { $lte: nextWeek },
-            "services.availability.end": { $gte: now }
-          };
-          break;
-        default:
-          // Custom date range from startDate and endDate
-          const { startDate, endDate } = req.query; // Make sure these are passed as query params
-          if (startDate && endDate) {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            if (start && end) {
-              availabilityCriteria = {
-                "services.availability.start": { $gte: start },
-                "services.availability.end": { $lte: end }
-              };
+      availabilityOption.forEach(option => {
+        let condition = {};
+        switch (option.toLowerCase()) {
+          case 'immediate':
+            // Immediate availability: current date within the availability range
+            condition = {
+              "services.availability.start": { $lte: now },
+              "services.availability.end": { $gte: now }
+            };
+            break;
+          case 'within a week':
+            // Availability within a week
+            const nextWeek = new Date();
+            nextWeek.setDate(now.getDate() + 7);
+            condition = {
+              "services.availability.start": { $lte: nextWeek },
+              "services.availability.end": { $gte: now }
+            };
+            break;
+          default:
+            // Custom date range from startDate and endDate
+            const { startDate, endDate } = req.query; // Make sure these are passed as query params
+            if (startDate && endDate) {
+              const start = new Date(startDate);
+              const end = new Date(endDate);
+              if (start && end) {
+                condition = {
+                  "services.availability.start": { $gte: start },
+                  "services.availability.end": { $lte: end }
+                };
+              }
             }
-          }
-          break;
-      }
+            break;
+        }
 
-      if (Object.keys(availabilityCriteria).length > 0) {
-        // Incorporate availability criteria into serviceMatch
-        serviceMatch["services.availability"] = { $elemMatch: availabilityCriteria };
+        if (Object.keys(condition).length > 0) {
+          availabilityOrConditions.push(condition);
+        }
+      });
+
+      if (availabilityOrConditions.length > 0) {
+        serviceMatch["$or"] = availabilityOrConditions;
       }
     }
 
@@ -355,14 +366,30 @@ exports.getAllBusiness = async (req, res) => {
       }
     }
 
-    // Pricing Type Filter
-    if (pricingType) {
-      serviceMatch["services.pricingType"] = pricingType;
+    // Pricing Type Filter (using $in)
+    if (pricingType.length > 0) {
+      serviceMatch["services.pricingType"] = { $in: pricingType };
     }
 
     // Apply Service-Level Filters
     if (Object.keys(serviceMatch).length > 0) {
       aggregationPipeline.push({ $match: serviceMatch });
+    }
+
+    // **New: Keyword Search Filter**
+    if (keyword) {
+      aggregationPipeline.push({
+        $match: {
+          $or: [
+            { businessName: { $regex: keyword, $options: 'i' } },
+            { businessType: { $regex: keyword, $options: 'i' } },
+            { description: { $regex: keyword, $options: 'i' } },
+            { "services.title": { $regex: keyword, $options: 'i' } },
+            { "services.description": { $regex: keyword, $options: 'i' } },
+            { "services.category": { $regex: keyword, $options: 'i' } },
+          ]
+        }
+      });
     }
 
     // 6: Group Businesses back with filtered services
@@ -434,16 +461,21 @@ exports.getAllBusiness = async (req, res) => {
     aggregationPipeline.push({ $skip: skip });
     aggregationPipeline.push({ $limit: limitNumber });
 
+    // Log the final aggregation pipeline for debugging
+    console.log("Final Aggregation Pipeline:", JSON.stringify(aggregationPipeline, null, 2));
+
     // Execute Aggregation Pipeline
     const businesses = await Business.aggregate(aggregationPipeline).exec();
 
     // Count Total Documents for Pagination
-    let countPipeline = aggregationPipeline.filter(stage => !('$skip' in stage) && !('$limit' in stage));
-    // Remove stages that were added solely for pagination after we took snapshot of pipeline
-    // Actually, let's reconstruct countPipeline without pagination stages:
-    countPipeline = aggregationPipeline
-      .filter(stage => !('$skip' in stage) && !('$limit' in stage) && !('$sort' in stage))
-      .concat({ $count: "totalCount" });
+    let countPipeline = aggregationPipeline.filter(stage =>
+      !('$skip' in stage) &&
+      !('$limit' in stage) &&
+      !('$sort' in stage)
+    );
+
+    // Add $count stage to get total count
+    countPipeline.push({ $count: "totalCount" });
 
     const totalBusinessesResult = await Business.aggregate(countPipeline).exec();
     const totalCount = totalBusinessesResult.length ? totalBusinessesResult[0].totalCount : 0;
@@ -464,6 +496,7 @@ exports.getAllBusiness = async (req, res) => {
     });
   }
 };
+
 
 exports.getBusiness = async (req, res) => {
   try {

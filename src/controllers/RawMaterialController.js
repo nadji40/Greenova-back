@@ -90,7 +90,7 @@ exports.getAllRawMaterials = async (req, res) => {
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
         console.log("Recieved Query", req.query);
-        
+
 
         // Initialize the aggregation pipeline
         const pipeline = [];
@@ -205,6 +205,22 @@ exports.getAllRawMaterials = async (req, res) => {
                 matchFilters['quantity.amount'] = { $gte: 6000 }; // Adjust the value as needed
             }
         }
+        // Keyword Search Filter
+        if (req.query.keyword) {
+            const keyword = req.query.keyword.trim();
+            matchFilters.$or = [
+                {
+                    materialCategory: { $regex: keyword, $options: 'i' }
+                },
+                {
+                    name: { $regex: keyword, $options: 'i' }
+                },
+                {
+                    description: { $regex: keyword, $options: 'i' }
+                },
+            ];
+            console.log("Keyword Filter Applied:", matchFilters.$or);
+        }
 
         // Add the match stage to the pipeline if any filters are set
         if (Object.keys(matchFilters).length > 0) {
@@ -237,15 +253,15 @@ exports.getAllRawMaterials = async (req, res) => {
         if (req.query.minReviews) {
             const minReviews = parseInt(req.query.minReviews);
             if (!isNaN(minReviews)) {
-              pipeline.push({
-                $match: {
-                  $expr: {
-                    $gte: [{ $size: '$supplierDetails.reviews' }, minReviews]
-                  }
-                }
-              });
+                pipeline.push({
+                    $match: {
+                        $expr: {
+                            $gte: [{ $size: '$supplierDetails.reviews' }, minReviews]
+                        }
+                    }
+                });
             }
-          }
+        }
 
         // 14. Sorting by createdAt (desc)
         pipeline.push({ $sort: { createdAt: -1 } });

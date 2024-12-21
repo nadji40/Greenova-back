@@ -265,6 +265,23 @@ exports.getAllSpareParts = async (req, res) => {
       matchFilters.bulkDiscountsAvailable = bulkDiscount; // Add filter for bulk discount availability
     }
 
+    // Keyword Search Filter
+    if (req.query.keyword) {
+      const keyword = req.query.keyword.trim();
+      matchFilters.$or = [
+        {
+          partCategory: { $regex: keyword, $options: 'i' }
+        },
+        {
+          subCategory: { $regex: keyword, $options: 'i' }
+        },
+        {
+          description: { $regex: keyword, $options: 'i' }
+        },
+      ];
+      console.log("Keyword Filter Applied:", matchFilters.$or);
+    }
+
     // Add match stage to aggregation pipeline if any filters are provided
     if (Object.keys(matchFilters).length > 0) {
       pipeline.push({ $match: matchFilters });
@@ -448,7 +465,7 @@ exports.deleteSparePart = async (req, res) => {
     );
     await business.save();
     await SparePart.findByIdAndDelete(req.params.id);
-    
+
     res.status(200).json({
       success: true,
       data: {},

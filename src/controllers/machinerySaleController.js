@@ -231,7 +231,7 @@ const getAllMachinery = async (req, res) => {
         if (keyword) {
             matchStage.$or = [
                 { machine_name: { $regex: keyword, $options: 'i' } },
-                { machine_description: { $regex: keyword, $options: 'i' } }, // Ensure correct field name
+                { machine_des: { $regex: keyword, $options: 'i' } }, // Ensure correct field name
                 { machine_type: { $regex: keyword, $options: 'i' } },
                 { brand: { $regex: keyword, $options: 'i' } },
                 { model: { $regex: keyword, $options: 'i' } }
@@ -408,7 +408,6 @@ const getAllMachinery = async (req, res) => {
         });
     }
 };
-
 
 // Get single machinery
 const getMachinery = async (req, res) => {

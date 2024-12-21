@@ -41,7 +41,6 @@ const businessSchema = new mongoose.Schema({
   },
   expertise_level: {
     type: String,
-    enum: ["Beginner", "Intermediate", "Expert"]
   },
   description: String,
   logo: {
@@ -65,21 +64,18 @@ const businessSchema = new mongoose.Schema({
     ],
     website: {
       type: String,
-      required: true
     },
     businessEmail: {
       type: String,
-      required: true
     },
     facebook: {
       type: String,
     },
-    Instagram: {
+    instagram: {
       type: String,
     },
     linkedin: {
       type: String,
-      required: true
     },
     youtube: {
       type: String,
@@ -131,6 +127,17 @@ businessSchema.index({ certifications: 1 });
 businessSchema.index({ businessType: 1 });
 businessSchema.index({ businessType: 1, years_of_experience: 1 });
 businessSchema.index({ certifications: 1, businessType: 1 });
-businessSchema.index({ 'contact_info.businessEmail': 1 }, { unique: true });
+businessSchema.index({ 'contact_info.businessEmail': 1 }, {
+  unique:
+    true
+});
+businessSchema.index({
+  businessName: 'text',
+  businessType: 'text',
+  description: 'text',
+  'services.title': 'text',
+  'services.description': 'text',
+  'services.category': 'text'
+});
 
 module.exports = mongoose.model('Business', businessSchema);
