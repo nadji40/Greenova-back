@@ -121,13 +121,13 @@ const businessSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Define Indexes
-businessSchema.index({ location: '2dsphere' });
-businessSchema.index({ years_of_experience: 1 });
-businessSchema.index({ certifications: 1 });
-businessSchema.index({ businessType: 1 });
-businessSchema.index({ businessType: 1, years_of_experience: 1 });
-businessSchema.index({ certifications: 1, businessType: 1 });
-businessSchema.index({ 'contact_info.businessEmail': 1 });
+// businessSchema.index({ location: '2dsphere' });
+// businessSchema.index({ years_of_experience: 1 });
+// businessSchema.index({ certifications: 1 });
+// businessSchema.index({ businessType: 1 });
+// businessSchema.index({ businessType: 1, years_of_experience: 1 });
+// businessSchema.index({ certifications: 1, businessType: 1 });
+// businessSchema.index({ 'contact_info.businessEmail': 1 });
 businessSchema.index({
   businessName: 'text',
   businessType: 'text',
