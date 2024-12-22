@@ -120,14 +120,14 @@ exports.getAllBusiness = async (req, res) => {
 
     // Destructure and parse query parameters
     let {
-      priceRange, // Expected as object: { min: '100', max: '500' }
+      priceRange,
       selectedCategories,
       selectedRating,
-      radius, // Expected as object: { min: '5', max: '50' }
-      expertiseLevel, // **Now can be multiple**
-      availabilityOption, // **Now can be multiple**
+      radius,
+      expertiseLevel,
+      availabilityOption,
       minReviews,
-      pricingType, // **Now can be multiple**
+      pricingType,
       selectedProviders,
       selectedCertifications,
       experienceRange,
@@ -136,7 +136,7 @@ exports.getAllBusiness = async (req, res) => {
       businessName,
       longitude,
       latitude,
-      keyword, // **New: Keyword Parameter**
+      keyword, // New: Keyword Parameter
       page = 1,
       limit = 20
     } = req.query;
@@ -156,9 +156,9 @@ exports.getAllBusiness = async (req, res) => {
     selectedCategories = parseToArray(selectedCategories);
     selectedProviders = parseToArray(selectedProviders);
     selectedCertifications = parseToArray(selectedCertifications);
-    expertiseLevel = parseToArray(expertiseLevel); // **Parsed as array**
-    pricingType = parseToArray(pricingType); // **Parsed as array**
-    availabilityOption = parseToArray(availabilityOption); // **Parsed as array**
+    expertiseLevel = parseToArray(expertiseLevel);
+    pricingType = parseToArray(pricingType);
+    availabilityOption = parseToArray(availabilityOption);
 
     // Parse priceRange
     let parsedPriceRange = {};
@@ -184,15 +184,15 @@ exports.getAllBusiness = async (req, res) => {
       experienceRange ||
       (selectedProviders && selectedProviders.length > 0) ||
       selectedRating ||
-      (expertiseLevel && expertiseLevel.length > 0) || // **Updated**
-      (availabilityOption && availabilityOption.length > 0) || // **Updated**
+      (expertiseLevel && expertiseLevel.length > 0) ||
+      (availabilityOption && availabilityOption.length > 0) ||
       serviceName ||
       (selectedCategories && selectedCategories.length > 0) ||
-      (pricingType && pricingType.length > 0) || // **Updated**
+      (pricingType && pricingType.length > 0) ||
       parsedPriceRange.min !== undefined ||
       parsedPriceRange.max !== undefined ||
       minReviews ||
-      (keyword && keyword !== ""); // **Include Keyword in hasFilters**
+      (keyword && keyword !== "");
 
     // If no filters, return all businesses directly
     if (!hasFilters) {
@@ -235,7 +235,7 @@ exports.getAllBusiness = async (req, res) => {
       });
     }
 
-    // 2: Basic Business-Level Filters (only fields that exist directly in the Business collection)
+    // 2: Basic Business-Level Filters
     const businessMatch = {};
 
     // Business Name Filter
@@ -274,6 +274,15 @@ exports.getAllBusiness = async (req, res) => {
       businessMatch.expertise_level = { $in: expertiseLevel };
     }
 
+    // **Business-Level Keyword Filter**
+    if (keyword) {
+      businessMatch.$or = [
+        { businessName: { $regex: keyword, $options: 'i' } },
+        { businessType: { $regex: keyword, $options: 'i' } },
+        { description: { $regex: keyword, $options: 'i' } }
+      ];
+    }
+
     if (Object.keys(businessMatch).length > 0) {
       aggregationPipeline.push({ $match: businessMatch });
     }
@@ -299,10 +308,7 @@ exports.getAllBusiness = async (req, res) => {
     // 5: Service-Level Filters
     const serviceMatch = { "services.status": "approved" };
 
-    // Availability Option Filter (now that services are looked up and unwound)
-    const now = new Date();
-    const dayOfWeek = now.toLocaleString('en-US', { weekday: 'long' });
-    const currentHour = now.getHours() + now.getMinutes() / 60;
+    // Availability Option Filter
     if (availabilityOption.length > 0) {
       const now = new Date();
       const availabilityOrConditions = [];
@@ -311,31 +317,28 @@ exports.getAllBusiness = async (req, res) => {
         let condition = {};
         switch (option.toLowerCase()) {
           case 'immediate':
-            // Immediate availability: current date within the availability range
             condition = {
-              "services.availability.start": { $lte: now },
-              "services.availability.end": { $gte: now }
+              "services.workingHours.start": { $lte: now },
+              "services.workingHours.end": { $gte: now }
             };
             break;
           case 'within a week':
-            // Availability within a week
             const nextWeek = new Date();
             nextWeek.setDate(now.getDate() + 7);
             condition = {
-              "services.availability.start": { $lte: nextWeek },
-              "services.availability.end": { $gte: now }
+              "services.workingHours.start": { $lte: nextWeek },
+              "services.workingHours.end": { $gte: now }
             };
             break;
           default:
-            // Custom date range from startDate and endDate
-            const { startDate, endDate } = req.query; // Make sure these are passed as query params
+            const { startDate, endDate } = req.query;
             if (startDate && endDate) {
               const start = new Date(startDate);
               const end = new Date(endDate);
               if (start && end) {
                 condition = {
-                  "services.availability.start": { $gte: start },
-                  "services.availability.end": { $lte: end }
+                  "services.workingHours.start": { $gte: start },
+                  "services.workingHours.end": { $lte: end }
                 };
               }
             }
@@ -382,25 +385,18 @@ exports.getAllBusiness = async (req, res) => {
       serviceMatch["services.pricingType"] = { $in: pricingType };
     }
 
+    // **Service-Level Keyword Filter**
+    if (keyword) {
+      serviceMatch.$or = [
+        { "services.title": { $regex: keyword, $options: 'i' } },
+        { "services.description": { $regex: keyword, $options: 'i' } },
+        { "services.category": { $regex: keyword, $options: 'i' } }
+      ];
+    }
+
     // Apply Service-Level Filters
     if (Object.keys(serviceMatch).length > 0) {
       aggregationPipeline.push({ $match: serviceMatch });
-    }
-
-    // **New: Keyword Search Filter**
-    if (keyword) {
-      aggregationPipeline.push({
-        $match: {
-          $or: [
-            { businessName: { $regex: keyword, $options: 'i' } },
-            { businessType: { $regex: keyword, $options: 'i' } },
-            { description: { $regex: keyword, $options: 'i' } },
-            { "services.title": { $regex: keyword, $options: 'i' } },
-            { "services.description": { $regex: keyword, $options: 'i' } },
-            { "services.category": { $regex: keyword, $options: 'i' } },
-          ]
-        }
-      });
     }
 
     // 6: Group Businesses back with filtered services
@@ -507,6 +503,7 @@ exports.getAllBusiness = async (req, res) => {
     });
   }
 };
+
 
 
 exports.getBusiness = async (req, res) => {
