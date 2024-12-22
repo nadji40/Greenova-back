@@ -67,12 +67,7 @@ const sparePartSchema = new mongoose.Schema({
     enum: ['In Stock', 'Out of Stock', 'Available on Order'],
     default: 'In Stock'
   },
-  ratings: {
-    type: Number,
-    min: 0,
-    max: 5,
-    default: 0
-  },
+
   warranty: {
     amount: {
       type: Number,
@@ -90,6 +85,12 @@ const sparePartSchema = new mongoose.Schema({
   },
   bulkDiscounts: {
     type: String,
+  },
+  ratings: {
+    type: Number,
+    min: 0,
+    max: 5,
+    default: 0
   },
   status: {
     type: String,

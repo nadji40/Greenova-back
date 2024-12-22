@@ -93,18 +93,19 @@ const rawMateriaLSchema = new mongoose.Schema({
         type: String,
         enum: ['In Stock', 'Available on Order'],
     },
-    ratings: {
-        type: Number,
-        min: 0,
-        max: 5,
-        default: 0
-    },
+    
     bulkDiscountsAvailable: {
         type: Boolean,
         required: true
     },
     bulkDiscounts: {
         type: String,
+    },
+    ratings: {
+        type: Number,
+        min: 0,
+        max: 5,
+        default: 0
     },
     status: {
         type: String,

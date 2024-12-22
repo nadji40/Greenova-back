@@ -300,6 +300,9 @@ exports.getAllBusiness = async (req, res) => {
     const serviceMatch = { "services.status": "approved" };
 
     // Availability Option Filter (now that services are looked up and unwound)
+    const now = new Date();
+    const dayOfWeek = now.toLocaleString('en-US', { weekday: 'long' });
+    const currentHour = now.getHours() + now.getMinutes() / 60;
     if (availabilityOption.length > 0) {
       const now = new Date();
       const availabilityOrConditions = [];
