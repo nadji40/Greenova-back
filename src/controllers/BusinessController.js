@@ -17,6 +17,14 @@ exports.createBusiness = async (req, res) => {
         message: "Only Service providers can register their businesses"
       })
     }
+    const isBusinessRegistered = await Business.findOne({ user: req.user.userId })
+    if (isBusinessRegistered) {
+      return res.status(401).json({
+        success: false,
+        error: "You have already registered business"
+      })
+    }
+
     // Check if logo file is present
     if (!files || !files.logo) {
       return res.status(400).json({

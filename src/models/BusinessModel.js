@@ -86,7 +86,6 @@ const businessSchema = new mongoose.Schema({
       type: String,
     }
   ],
-  workingHours: String,
   subscriptionPlan: {
     type: String,
     enum: ["Basic", "Premium", "Advance"],
