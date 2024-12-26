@@ -39,12 +39,10 @@ const serviceSchema = new mongoose.Schema({
       required: true
     },
     startTime: {
-      type: Number, // Using 24-hour format (e.g., 9 for 9AM)
-      required: true
+      type: Number, 
     },
     endTime: {
-      type: Number, // Using 24-hour format (e.g., 17 for 5PM)
-      required: true
+      type: Number, 
     }
   },
   images: [String],

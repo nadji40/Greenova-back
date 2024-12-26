@@ -504,8 +504,6 @@ exports.getAllBusiness = async (req, res) => {
   }
 };
 
-
-
 exports.getBusiness = async (req, res) => {
   try {
     if (req.user.userType != "serviceProvider") {
